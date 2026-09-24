@@ -1390,7 +1390,7 @@ namespace Contra
         }
         private void GameFolder_Click(object sender, EventArgs e)
         {
-            Process.Start(Environment.CurrentDirectory);
+            Url_open(Environment.CurrentDirectory);
         }
 
         private void DataFolder_MouseEnter(object sender, EventArgs e)
@@ -1405,7 +1405,7 @@ namespace Contra
         }
         private void DataFolder_Click(object sender, EventArgs e)
         {
-            Process.Start(Globals.myDocPath);
+            Url_open(Globals.myDocPath);
         }
 
         private void RadioFlag_GB_MouseEnter(object sender, EventArgs e)
@@ -1608,7 +1608,7 @@ namespace Contra
         }
         private void GameFolderLabel_Click(object sender, EventArgs e)
         {
-            Process.Start(Environment.CurrentDirectory);
+            Url_open(Environment.CurrentDirectory);
         }
 
         private void DataFolderLabel_MouseEnter(object sender, EventArgs e)
@@ -1623,7 +1623,7 @@ namespace Contra
         }
         private void DataFolderLabel_Click(object sender, EventArgs e)
         {
-            Process.Start(Globals.myDocPath);
+            Url_open(Globals.myDocPath);
         }
 
         private static void DeleteDuplicateFiles()
@@ -1852,22 +1852,17 @@ namespace Contra
         {
             try
             {
-                Process.Start(url);
+                // UseShellExecute must be set explicitly on .NET Core and later: the default false throws
+                // on URLs and folder paths instead of handing them to the shell, which is why every link
+                // reported "Opening link failed" after the net10 move.
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
-                try
-                {
-                    Process.Start("IExplore.exe", url);
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Could not use your default browser to open URL:\n" + url + "\n\n" + ex.Message,
-                        "Opening link failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return false;
-                }
+                MessageBox.Show("Could not open:\n" + url + "\n\n" + ex.Message,
+                    "Opening link failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
             }
         }
 
@@ -2389,7 +2384,7 @@ namespace Contra
                         DialogResult dialogResult = MessageBox.Show(Messages.GenerateMessage("E_Cannot_Delete_INIZH", Globals.currentLanguage),
                         Messages.GenerateMessage("Error", Globals.currentLanguage), MessageBoxButtons.YesNoCancel, MessageBoxIcon.Error);
                         if (dialogResult == DialogResult.Yes)
-                            Process.Start(Environment.CurrentDirectory + @"\Data\INI");
+                            Url_open(Environment.CurrentDirectory + @"\Data\INI");
                         return;
                     }
                 }
@@ -2549,7 +2544,7 @@ namespace Contra
                         Messages.GenerateMessage("Warning", Globals.currentLanguage),
                         MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
                     if (dialogResult == DialogResult.Yes)
-                        Process.Start(absoluteFolder);
+                        Url_open(absoluteFolder);
                 }
             }
             catch { }

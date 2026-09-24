@@ -49,7 +49,9 @@ namespace Contra
                 //MessageBox.Show("Contra Launcher has detected that your user settings file has become corrupted. This may be due to a crash or improper exiting of the program. Contra Launcher will now reset your user settings in order to continue.");
                 File.Delete(filename);
                 //Properties.Settings.Default.Reload();
-                System.Diagnostics.Process.Start("Contra_Launcher.exe");
+                // UseShellExecute is false by default on .NET Core and later; shell execution restores the
+                // net48 behaviour of resolving the relative exe name next to the launcher.
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("Contra_Launcher.exe") { UseShellExecute = true });
                 return;
             }
             Properties.Settings.Default.LangEN = true;
