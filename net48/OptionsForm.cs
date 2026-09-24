@@ -81,13 +81,13 @@ namespace Contra
             GoModeRadio = new RadioButton();
             GoModeRadio.Text = "Generals\r\nOnline";
             GoModeRadio.AutoSize = true;
-            GoModeRadio.Location = new Point(545, 368);
+            GoModeRadio.Location = new Point(658, 150);
             Controls.Add(GoModeRadio);
 
             GoUnlimitedRadio = new RadioButton();
             GoUnlimitedRadio.Text = "OnlineUnlimited";
             GoUnlimitedRadio.AutoSize = true;
-            GoUnlimitedRadio.Location = new Point(685, 374);
+            GoUnlimitedRadio.Location = new Point(658, 214);
             Controls.Add(GoUnlimitedRadio);
 
             GoModeRadio.CheckedChanged += GoModeRadio_CheckedChanged;
