@@ -624,7 +624,7 @@ namespace Contra
                 ApplyLanguageSelection("zh-CN", "CN", () =>
                 {
                     toolTip1.SetToolTip(RadioLocQuotes, "所有阵营的单位将使用英语配音。");
-                    toolTip1.SetToolTip(RadioOrigQuotes, "各阵营单位使用其母语配音。");
+                    toolTip1.SetToolTip(RadioOrigQuotes, "各阵营单位使用本阵营语言配音。");
                     toolTip1.SetToolTip(RadioEN, "游戏内语言:英语。");
                     toolTip1.SetToolTip(RadioRU, "游戏内语言:简体中文。");
                     toolTip1.SetToolTip(MNew, "使用 Charlie Lockwood 的 \"Enhanced\" 原声。");
@@ -641,7 +641,7 @@ namespace Contra
                     ModDLLabel.Text = "下载进度: ";
                     CancelModDLBtn.Text = "取消";
                     RadioLocQuotes.Text = "英语";
-                    RadioOrigQuotes.Text = "母语";
+                    RadioOrigQuotes.Text = "阵营语言";
                     DefaultPics.Text = "标准";
                     MStandard.Text = "Zero Hour";
                     WinCheckBox.Text = "窗口化";
