@@ -2480,9 +2480,9 @@ namespace Contra
             }
 
             // The flag panel has no room for a sixth button, so Chinese is offered at startup instead.
-            // A Chinese system switches on its own and is never asked; the bilingual prompt is only for
-            // everyone else, and a refusal is remembered so it is not asked again.
-            if (!RadioFlag_CN.Checked && !Properties.Settings.Default.ChinesePromptDismissed)
+            // A Chinese system switches on its own and is never asked; the bilingual prompt is for
+            // everyone else and asks on every launch until Chinese is picked.
+            if (!RadioFlag_CN.Checked)
             {
                 if (GetCurrentCulture() == "zh-CN" || GetCurrentCulture() == "zh-Hans")
                 {
@@ -2498,11 +2498,6 @@ namespace Contra
                         MessageBoxIcon.Question);
                     if (switchToChinese == DialogResult.Yes)
                         RadioFlag_CN.Checked = true;
-                    else
-                    {
-                        Properties.Settings.Default.ChinesePromptDismissed = true;
-                        Properties.Settings.Default.Save();
-                    }
                 }
             }
 
