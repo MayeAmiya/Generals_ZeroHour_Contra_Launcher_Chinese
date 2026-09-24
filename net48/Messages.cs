@@ -296,7 +296,7 @@ namespace Contra
                 "Панель керування Contra з попередніх\nверсій. Рекомендовано для дисплеїв зі\nспіввідношенням сторін 4:3.",
                 "Контролна лента Contra от пред. версии.\nПрепоръчва се за дисплеи със\nсъотношение 4:3.",
                 "Contras Steuerleiste aus früheren\nVersionen. Empfohlen für Displays mit\neinem Seitenverhältnis von 4:3.",
-                "旧版 Contra 自带的操作栏。\n推荐用于 4:3\n比例的显示器。"),
+                "旧版 Contra 自带操作栏。\n推荐用于 4:3 比例的显示器。"),
             
             ["ControlBarStandard"] = lang => ChooseByLanguage(lang, "CONTROL BAR STANDARD", "CONTROL BAR STANDARD", "CONTROL BAR STANDARD", "CONTROL BAR STANDARD", "CONTROL BAR STANDARD", "CONTROL BAR STANDARD"),
             
@@ -316,7 +316,7 @@ namespace Contra
                 "Іконки будуть у високій якості.\nНайкраще виглядає на великих\nдисплеях.",
                 "Малките бутони ще ползват по-висока\nрезолюция на иконите. Препоръчва\nсе за големи дисплеи.",
                 "Kleine Schaltflächen verwenden\neine größere Symbolauflösung. Sieht\nam besten auf großen Displays aus.",
-                "小按钮将使用更大的\n图标分辨率。在大屏\n显示器上效果最佳。"),
+                "小按钮将使用更大的图标分辨率。\n在大屏显示器上效果最佳。"),
             
             ["IconQualityStandard"] = lang => ChooseByLanguage(lang, "STANDARD ICON QUALITY", "СТАНДАРТНОЕ КАЧЕСТВО ИКОН", "СТАНДАРТНА ЯКІСТЬ ІКОНОК", "СТАНДАРТНО КАЧЕСТВО НА ИКОНИТЕ", "STANDARD-CAMEO-QUALITÄT", "标准图标精度"),
             
@@ -326,7 +326,7 @@ namespace Contra
                 "Іконки будуть у стандартному дозволі.\nНайкраще виглядає на невеликих дисплеях.",
                 "Малките бутони ще ползват стандартна\nрезолюция на иконите. Препоръчва\nсе за малки дисплеи.",
                 "Kleine Schaltflächen verwenden\ndie Standardsymbolauflösung. Sieht\nam besten auf kleinen Displays aus.",
-                "小按钮将使用标准的\n图标分辨率。在小屏\n显示器上效果最佳。"),
+                "小按钮将使用标准的图标分辨率。\n在小屏显示器上效果最佳。"),
             
             ["HotkeysLeikeze"] = lang => ChooseByLanguage(lang, "LEIKEZE HOTKEYS", "ГОРЯЧИЕ КЛАВИШИ LEIKEZE", "ГАРЯЧІ КЛАВІШІ LEIKEZE", "БЪРЗИ КЛАВИШИ LEIKEZE", "LEIKEZE-HOTKEYS", "LEIKEZE 快捷键"),
             
