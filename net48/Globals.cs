@@ -9,6 +9,7 @@ namespace Contra
         public static bool UA_Checked = false;
         public static bool BG_Checked = false;
         public static bool DE_Checked = false;
+        public static bool CN_Checked = false;
         public static string currentLanguage;
         public static string userOS;
         public static string myDocPath;

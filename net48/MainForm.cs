@@ -174,6 +174,7 @@ namespace Contra
             Globals.RU_Checked = false;
             Globals.UA_Checked = false;
             Globals.DE_Checked = false;
+            Globals.CN_Checked = false;
             Globals.GB_Checked = false;
             switch (code)
             {
@@ -182,6 +183,7 @@ namespace Contra
                 case "UA": Globals.UA_Checked = true; break;
                 case "BG": Globals.BG_Checked = true; break;
                 case "DE": Globals.DE_Checked = true; break;
+                case "CN": Globals.CN_Checked = true; break;
             }
             Globals.currentLanguage = code;
         }
@@ -1765,6 +1767,12 @@ namespace Contra
             RadioFlag_UA.Checked = Properties.Settings.Default.Flag_UA;
             RadioFlag_BG.Checked = Properties.Settings.Default.Flag_BG;
             RadioFlag_DE.Checked = Properties.Settings.Default.Flag_DE;
+            // Chinese has no flag radio button on the form yet, so apply a persisted Chinese choice directly.
+            if (Properties.Settings.Default.Flag_CN)
+            {
+                SetLanguage("CN");
+            }
+
             AutoScaleMode = AutoScaleMode.Dpi;
         }
 
@@ -1808,6 +1816,7 @@ namespace Contra
             Properties.Settings.Default.Flag_UA = RadioFlag_UA.Checked;
             Properties.Settings.Default.Flag_BG = RadioFlag_BG.Checked;
             Properties.Settings.Default.Flag_DE = RadioFlag_DE.Checked;
+            Properties.Settings.Default.Flag_CN = Globals.CN_Checked;
             Properties.Settings.Default.Save();
 
             DelTmpChunk();
