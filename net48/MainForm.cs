@@ -643,7 +643,7 @@ namespace Contra
                     RadioLocQuotes.Text = "英语";
                     RadioOrigQuotes.Text = "阵营语言";
                     DefaultPics.Text = "标准";
-                    MStandard.Text = "Zero Hour";
+                    MStandard.Text = "ZeroHour";
                     WinCheckBox.Text = "窗口化";
                     QSCheckBox.Text = "快速启动";
                     RadioEN.Text = "英语";
