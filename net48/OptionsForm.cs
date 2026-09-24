@@ -82,12 +82,16 @@ namespace Contra
             GoModeRadio.Text = "Generals\r\nOnline";
             GoModeRadio.AutoSize = true;
             GoModeRadio.Location = new Point(658, 150);
+            GoModeRadio.BackColor = Color.Transparent;
+            GoModeRadio.UseVisualStyleBackColor = false;
             Controls.Add(GoModeRadio);
 
             GoUnlimitedRadio = new RadioButton();
             GoUnlimitedRadio.Text = "OnlineUnlimited";
             GoUnlimitedRadio.AutoSize = true;
             GoUnlimitedRadio.Location = new Point(658, 214);
+            GoUnlimitedRadio.BackColor = Color.Transparent;
+            GoUnlimitedRadio.UseVisualStyleBackColor = false;
             Controls.Add(GoUnlimitedRadio);
 
             GoModeRadio.CheckedChanged += GoModeRadio_CheckedChanged;
@@ -262,6 +266,8 @@ namespace Contra
                 NoPreviewText.Text = "暂无预览";
                 AcceptBtn.Text = "确定";
                 CloseBtn.Text = "关闭";
+                GoModeRadio.Text = "在线版将军";
+                GoUnlimitedRadio.Text = "无限制模式";
                 ApplyChineseFont(Controls);
             }
             //TextureResLabel.Text = Messages.GenerateMessage("TextureRes", Globals.currentLanguage);
