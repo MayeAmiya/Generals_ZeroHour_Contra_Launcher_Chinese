@@ -12,7 +12,9 @@
 	<GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <PublishReadyToRun>false</PublishReadyToRun>
-    <PublishSingleFile>true</PublishSingleFile>
+    <!-- Folder publish instead of the single-file bundle: no 100MB monolith, faster startup, and files the
+         launcher's own zip updater can replace individually. -->
+    <PublishSingleFile>false</PublishSingleFile>
     <!--<PublishTrimmed>true</PublishTrimmed>-->
     <RuntimeIdentifier>win-x86</RuntimeIdentifier>
     <PlatformTarget>AnyCPU</PlatformTarget>

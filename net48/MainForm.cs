@@ -665,6 +665,9 @@ namespace Contra
                     MusicLabel.Text = "背景音乐";
                     PortraitsLabel.Text = "将军头像";
                     ApplyChineseFont(this);
+                    ShrinkMusicOptionFont(MNew);
+                    ShrinkMusicOptionFont(MStandard);
+                    ShrinkMusicOptionFont(MTheScore);
                     verString = (betaPrefix == "ContraXBeta") ? "X Beta" : "X Beta 2";
                     if (betaPrefix != "ContraXBeta" && (File.Exists($"!!{betaPrefix}_Patch1.ctr") || File.Exists($"!!{betaPrefix}_Patch1.big")))
                         verString += " Patch 1";
@@ -675,17 +678,34 @@ namespace Contra
 
         // Chinese glyphs fill their box more than Latin ones at the same nominal size, so the whole form moves to
         // Microsoft YaHei and trims the non-display sizes slightly to keep Chinese lines as compact as English.
+        private const string ChineseFontFamily = "Microsoft YaHei";
+
         private const float ChineseFontSizeScale = 0.94f;
+
+        // The music options carry the longest English names (Zero Hour, The Score) in buttons sized for Calibri.
+        // YaHei draws Latin wider, so they overflow first; two sizes were not enough, this lands them at
+        // roughly ten pixels, which fits the music panel.
+        private const float MusicOptionSizeShrink = 3.0f;
 
         private static void ApplyChineseFont(Control parent)
         {
             Font source = parent.Font;
             float size = source.Size >= 20f ? source.Size : Math.Max(7f, source.Size * ChineseFontSizeScale);
-            parent.Font = new Font("Microsoft YaHei", size, source.Style, source.Unit);
+            parent.Font = new Font(ChineseFontFamily, size, source.Style, source.Unit);
             foreach (Control child in parent.Controls)
             {
                 ApplyChineseFont(child);
             }
+        }
+
+        private static void ShrinkMusicOptionFont(Control musicOption)
+        {
+            Font source = musicOption.Font;
+            musicOption.Font = new Font(
+                ChineseFontFamily,
+                Math.Max(7f, source.Size - MusicOptionSizeShrink),
+                source.Style,
+                source.Unit);
         }
 
         public async void GetModUpdate(string versionsTXT, string patch_url)
