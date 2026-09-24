@@ -626,7 +626,8 @@ namespace Contra
                     CancelModDLBtn.Text = "取消";
                     RadioLocQuotes.Text = "英语";
                     RadioOrigQuotes.Text = "母语";
-                    DefaultPics.Text = MStandard.Text = "标准";
+                    DefaultPics.Text = "标准";
+                    MStandard.Text = "Zero Hour";
                     WinCheckBox.Text = "窗口化";
                     QSCheckBox.Text = "快速启动";
                     RadioEN.Text = "英语";
