@@ -2,6 +2,7 @@
 using System.Windows.Forms;
 using System.Threading;
 using System.IO;
+using System.Text;
 using System.Diagnostics;
 
 namespace Contra
@@ -38,6 +39,10 @@ namespace Contra
         [STAThread]
         static void Main()
         {
+#if !NETFRAMEWORK
+            // .NET Core only ships UTF-8 family encodings; GameData.big edits need windows-1252.
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+#endif
             // Check if the config file is corrupt. If yes, reset it and continue.
             try
             {

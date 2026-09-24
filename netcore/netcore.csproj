@@ -38,5 +38,6 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.Resources.Extensions" Version="*" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="*" />
   </ItemGroup>
 </Project>
