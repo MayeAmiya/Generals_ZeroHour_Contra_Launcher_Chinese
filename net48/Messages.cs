@@ -286,7 +286,7 @@ namespace Contra
                 "Control Bar Pro від FAS і xezon.\nРекомендовано для дисплеїв зі\nспіввідношенням сторін 16:9.",
                 "Контролна лента Pro от FAS и xezon.\nПрепоръчва се за дисплеи със\nсъотношение 16:9.",
                 "Control Bar Pro von FAS und xezon.\nEmpfohlen für Displays mit einem\nSeitenverhältnis von 16:9.",
-                "由 FAS 和 xezon 制作的 Control Bar Pro。\n推荐用于 16:9\n比例的显示器。"),
+                "由 FAS 和 xezon 制作。\nControl Bar Pro 操作栏。\n推荐用于 16:9 比例的显示器。"),
             
             ["ControlBarContra"] = lang => ChooseByLanguage(lang, "CONTROL BAR CONTRA", "CONTROL BAR CONTRA", "CONTROL BAR CONTRA", "CONTROL BAR CONTRA", "CONTROL BAR CONTRA", "CONTROL BAR CONTRA"),
             
