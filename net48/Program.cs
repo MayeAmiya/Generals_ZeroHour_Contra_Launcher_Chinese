@@ -143,6 +143,10 @@ namespace Contra
                     {
                         MessageBox.Show("Contra Launcher läuft bereits!", "Beachten", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
+                    else if (Properties.Settings.Default.Flag_CN == true)
+                    {
+                        MessageBox.Show("Contra Launcher 已经在运行!", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
                     return;
                 }
 

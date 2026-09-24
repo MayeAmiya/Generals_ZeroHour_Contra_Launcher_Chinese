@@ -150,13 +150,14 @@ namespace Contra
         public static readonly CancellationTokenSource httpCancellationToken = new CancellationTokenSource();
         private static readonly SemaphoreSlim httpSemaphore = new SemaphoreSlim(1, 1);
 
-        private static T ChooseByLanguage<T>(T en, T ru, T ua, T bg, T de)
+        private static T ChooseByLanguage<T>(T en, T ru, T ua, T bg, T de, T cn)
         {
             if (Globals.GB_Checked) return en;
             if (Globals.RU_Checked) return ru;
             if (Globals.UA_Checked) return ua;
             if (Globals.BG_Checked) return bg;
             if (Globals.DE_Checked) return de;
+            if (Globals.CN_Checked) return cn;
             return en;
         }
 
@@ -202,9 +203,9 @@ namespace Contra
             catch { }
         }
 
-        private void OpenByLanguage(string enUrl, string ruUaUrl, string bgUrl, string deUrl = null)
+        private void OpenByLanguage(string enUrl, string ruUaUrl, string bgUrl, string deUrl = null, string cnUrl = null)
         {
-            string chosen = ChooseByLanguage(enUrl, ruUaUrl, ruUaUrl, bgUrl, deUrl ?? enUrl);
+            string chosen = ChooseByLanguage(enUrl, ruUaUrl, ruUaUrl, bgUrl, deUrl ?? enUrl, cnUrl ?? enUrl);
             Url_open(chosen);
         }
 
@@ -225,7 +226,8 @@ namespace Contra
                         Tuple.Create($"Версия Contra Launcher {newVersion} доступна! Нажмите «ОК», чтобы обновить и перезапустить!", "Доступно обновление"),
                         Tuple.Create($"Версія Contra Launcher {newVersion} доступна! Натисніть кнопку ОК, щоб оновити та перезапустити!", "Доступне оновлення"),
                         Tuple.Create($"Contra Launcher версия {newVersion} е достъпна! Щракнете OK, за да обновите и рестартирате!", "Достъпна е актуализация"),
-                        Tuple.Create($"Contra Launcher version {newVersion} ist verfьgbar! Klicke OK zum aktualisieren und neu starten!", "Aktualisierung verfьgbar")
+                        Tuple.Create($"Contra Launcher version {newVersion} ist verfьgbar! Klicke OK zum aktualisieren und neu starten!", "Aktualisierung verfьgbar"),
+                        Tuple.Create($"Contra Launcher {newVersion} 已发布!点击“确定”更新并重启!", "有可用更新")
                     );
                     ShowTopMostInfo(pendingText.Item1, pendingText.Item2);
 
@@ -249,7 +251,8 @@ namespace Contra
                         Tuple.Create("Ваше приложение теперь обновлено!\n\nПриложение будет перезагружено!", "Обновление завершено"),
                         Tuple.Create("Ваша готова до оновлення!\n\nПрограма буде перезавантажена!", "Оновлення завершено"),
                         Tuple.Create("Приложението е вече обновено!\n\nСега ще се рестартира!", "Обновяването е завършено"),
-                        Tuple.Create("Ihr Programm ist jetzt auf dem neuesten Stand!\n\nDas Programm wird sich jetzt neu starten!", "Aktualisierung abgeschlossen")
+                        Tuple.Create("Ihr Programm ist jetzt auf dem neuesten Stand!\n\nDas Programm wird sich jetzt neu starten!", "Aktualisierung abgeschlossen"),
+                        Tuple.Create("已是最新版本!\n\n启动器即将重启!", "更新完成")
                     );
                     ShowTopMostInfo(doneText.Item1, doneText.Item2);
 
@@ -639,6 +642,7 @@ namespace Contra
                         { Tuple.Create($"Версія Contra {modVersionText} доступна!\n\nПримітка: Якщо ви граєте по мережі, вам слід завантажити нову версію за будь-яку ціну, інакше гра викличе помилку невідповідності!\n\nХочете завантажити та оновити зараз?", "Доступне оновлення"), Globals.UA_Checked},
                         { Tuple.Create($"Contra версия {modVersionText} е достъпна!\n\nЗабележка: Ако играете онлайн, трябва да изтеглите новата версия на всяка цена, в противен случай играта ще прекъсва с грешка за несъответствие!\n\nИскате ли да изтеглите и актуализирате сега?", "Достъпна е актуализация"), Globals.BG_Checked},
                         { Tuple.Create($"Contra version {modVersionText} ist verfьgbar!\n\nHinweis: Wenn Sie online spielen, sollten Sie die neue Version unbedingt herunterladen, da sonst ein Fehlanpassungsfehler auftritt!\n\nMöchten Sie jetzt herunterladen und aktualisieren?", "Aktualisierung verfьgbar"), Globals.DE_Checked},
+                        { Tuple.Create($"Contra {modVersionText} 已发布!\n\n注意:如果你要进行联机,务必下载新版本,否则游戏会因版本不匹配而中断!\n\n是否现在下载并更新?", "有可用更新"), Globals.CN_Checked},
                     }.Single(l => l.Value).Key;
                 DialogResult dialogResult = MessageBox.Show(new Form { TopMost = true }, updatePendingText.Item1, updatePendingText.Item2, MessageBoxButtons.YesNo, MessageBoxIcon.Information);
 
@@ -666,6 +670,7 @@ namespace Contra
                             { Tuple.Create($"Нова версія {modVersionText} була успішно встановлена! Тепер лаунчер перезапуститься!", "Оновлення завершено"), Globals.UA_Checked},
                             { Tuple.Create($"Новата версия {modVersionText} беше инсталирана успешно! Launcher-а ще се рестартира!", "Обновяването е завършено"), Globals.BG_Checked},
                             { Tuple.Create($"Die neue Version {modVersionText} wurde erfolgreich installiert! Der Launcher wird jetzt neu gestartet!", "Aktualisierung abgeschlossen"), Globals.DE_Checked},
+                            { Tuple.Create($"新版本 {modVersionText} 安装成功!启动器即将重启!", "更新完成"), Globals.CN_Checked},
                         }.Single(l => l.Value).Key;
                     MessageBox.Show(new Form { TopMost = true }, updateDoneText.Item1, updateDoneText.Item2, MessageBoxButtons.OK, MessageBoxIcon.Information);
 
@@ -1930,7 +1935,8 @@ namespace Contra
 
                 var versionsTXT_lang = new Dictionary<string, bool>
                     {
-                        {"MOTD-EN: ", Globals.GB_Checked},
+                        // The remote version file carries no Chinese MOTD, so Chinese reads the English one.
+                        {"MOTD-EN: ", Globals.GB_Checked || Globals.CN_Checked},
                         {"MOTD-RU: ", Globals.RU_Checked},
                         {"MOTD-UA: ", Globals.UA_Checked},
                         {"MOTD-BG: ", Globals.BG_Checked},
@@ -1973,6 +1979,7 @@ namespace Contra
                     { Tuple.Create("Новий GenTool завантажено!", "Оновлення GenTool завершено"), Globals.UA_Checked},
                     { Tuple.Create("Нова версия на GenTool беше изтегленa!", "Обновяването на GenTool е завършено"), Globals.BG_Checked},
                     { Tuple.Create("Ein neuer GenTool wurde heruntergeladen!", "Aktualisierung GenTool abgeschlossen"), Globals.DE_Checked},
+                    { Tuple.Create("已下载新版 GenTool!", "GenTool 更新完成"), Globals.CN_Checked},
                 }.Single(l => l.Value).Key;
             MessageBox.Show(new Form { TopMost = true }, gtLangText.Item1, gtLangText.Item2, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
