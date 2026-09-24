@@ -136,6 +136,12 @@ namespace Contra
                 .First();
             resolutionComboBox.SelectedItem = bestResolution;
 
+            // A resolution picked in this launcher wins over the screen-max default; the stale
+            // Options.ini value below never does.
+            string storedRes = Properties.Settings.Default.Res;
+            if (!string.IsNullOrWhiteSpace(storedRes) && noDupes.Contains(storedRes))
+                resolutionComboBox.SelectedItem = storedRes;
+
             if (Globals.RU_Checked == true)
             {
                 labelResolution.Text = "Разрешение:";
@@ -339,16 +345,11 @@ namespace Contra
                 {
                     while ((line = file.ReadLine()) != null)
                     {
-                        // Get current resolution
+                        // Resolution is launcher-owned now; track the key but never let a stale
+                        // Options.ini value override the screen-max default.
                         if (line.ToLower().Contains("resolution ="))
                         {
                             found.Add(line);
-                            s = line;
-                            s = s.Substring(s.IndexOf('=') + 2);
-                            s = s.TrimEnd();
-                            string s2 = s.Replace(" ", "x");
-                            resolutionComboBox.Text = s2;
-                            Properties.Settings.Default.Res = s2;
                         }
                         // Particle cap no longer lives here; the slider is the GO camera height now.
                         if (line.ToLower().Contains("maxparticlecount ="))
