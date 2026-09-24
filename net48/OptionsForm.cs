@@ -275,6 +275,7 @@ namespace Contra
             // Match the option checkbox styling - in Chinese this is the post-sweep Microsoft YaHei size.
             GoModeCheckBox.Font = FogCheckBox.Font;
             GoUnlimitedCheckBox.Font = FogCheckBox.Font;
+            GoUnlimitedCheckBox.Location = new Point(658, GoModeCheckBox.Bottom + 6);
 
             // Load settings from Options.ini to display them in our Options form
             if (Directory.Exists(Globals.myDocPath))
