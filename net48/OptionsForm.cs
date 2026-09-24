@@ -61,8 +61,8 @@ namespace Contra
         bool heatEffectsCheckBoxIsClicked = false;
 
         // Generals Online launch mode radios (created in the constructor).
-        private RadioButton GoModeRadio;
-        private RadioButton GoUnlimitedRadio;
+        private CheckBox GoModeCheckBox;
+        private CheckBox GoUnlimitedCheckBox;
 
         // Guards the radio handlers against the programmatic Checked assignments during construction.
         private bool cameraControlsInitializing = true;
@@ -78,27 +78,27 @@ namespace Contra
 
             // Generals Online launch mode and its unlimited-camera extension. The second option only
             // becomes selectable once the first is picked.
-            GoModeRadio = new RadioButton();
-            GoModeRadio.Text = "Generals\r\nOnline";
-            GoModeRadio.AutoSize = true;
-            GoModeRadio.Location = new Point(658, 150);
-            GoModeRadio.BackColor = Color.Transparent;
-            GoModeRadio.UseVisualStyleBackColor = false;
-            Controls.Add(GoModeRadio);
+            GoModeCheckBox = new CheckBox();
+            GoModeCheckBox.Text = "Generals\r\nOnline";
+            GoModeCheckBox.AutoSize = true;
+            GoModeCheckBox.Location = new Point(658, 150);
+            GoModeCheckBox.BackColor = Color.Transparent;
+            GoModeCheckBox.UseVisualStyleBackColor = false;
+            Controls.Add(GoModeCheckBox);
 
-            GoUnlimitedRadio = new RadioButton();
-            GoUnlimitedRadio.Text = "OnlineUnlimited";
-            GoUnlimitedRadio.AutoSize = true;
-            GoUnlimitedRadio.Location = new Point(658, 214);
-            GoUnlimitedRadio.BackColor = Color.Transparent;
-            GoUnlimitedRadio.UseVisualStyleBackColor = false;
-            Controls.Add(GoUnlimitedRadio);
+            GoUnlimitedCheckBox = new CheckBox();
+            GoUnlimitedCheckBox.Text = "OnlineUnlimited";
+            GoUnlimitedCheckBox.AutoSize = true;
+            GoUnlimitedCheckBox.Location = new Point(658, 214);
+            GoUnlimitedCheckBox.BackColor = Color.Transparent;
+            GoUnlimitedCheckBox.UseVisualStyleBackColor = false;
+            Controls.Add(GoUnlimitedCheckBox);
 
-            GoModeRadio.CheckedChanged += GoModeRadio_CheckedChanged;
-            GoUnlimitedRadio.CheckedChanged += GoUnlimitedRadio_CheckedChanged;
-            GoModeRadio.Checked = Properties.Settings.Default.GoClientMode;
-            GoUnlimitedRadio.Enabled = GoModeRadio.Checked;
-            GoUnlimitedRadio.Checked = GoModeRadio.Checked && Properties.Settings.Default.GoUnlimitedCamera;
+            GoModeCheckBox.CheckedChanged += GoModeCheckBox_CheckedChanged;
+            GoUnlimitedCheckBox.CheckedChanged += GoUnlimitedCheckBox_CheckedChanged;
+            GoModeCheckBox.Checked = Properties.Settings.Default.GoClientMode;
+            GoUnlimitedCheckBox.Enabled = GoModeCheckBox.Checked;
+            GoUnlimitedCheckBox.Checked = GoModeCheckBox.Checked && Properties.Settings.Default.GoUnlimitedCamera;
             cameraControlsInitializing = false;
 
             // The old particle cap slider doubles as the camera pitch (degrees). The height slider feeds
@@ -266,15 +266,15 @@ namespace Contra
                 NoPreviewText.Text = "暂无预览";
                 AcceptBtn.Text = "确定";
                 CloseBtn.Text = "关闭";
-                GoModeRadio.Text = "在线版将军";
-                GoUnlimitedRadio.Text = "无限制模式";
+                GoModeCheckBox.Text = "在线版将军";
+                GoUnlimitedCheckBox.Text = "无限制模式";
                 ApplyChineseFont(Controls);
             }
             //TextureResLabel.Text = Messages.GenerateMessage("TextureRes", Globals.currentLanguage);
 
             // Match the option checkbox styling - in Chinese this is the post-sweep Microsoft YaHei size.
-            GoModeRadio.Font = FogCheckBox.Font;
-            GoUnlimitedRadio.Font = FogCheckBox.Font;
+            GoModeCheckBox.Font = FogCheckBox.Font;
+            GoUnlimitedCheckBox.Font = FogCheckBox.Font;
 
             // Load settings from Options.ini to display them in our Options form
             if (Directory.Exists(Globals.myDocPath))
@@ -964,15 +964,15 @@ namespace Contra
         /// </summary>
         private void ApplyCameraForCurrentMode()
         {
-            Properties.Settings.Default.GoClientMode = GoModeRadio.Checked;
-            Properties.Settings.Default.GoUnlimitedCamera = GoUnlimitedRadio.Checked;
+            Properties.Settings.Default.GoClientMode = GoModeCheckBox.Checked;
+            Properties.Settings.Default.GoUnlimitedCamera = GoUnlimitedCheckBox.Checked;
             Properties.Settings.Default.GoCameraMaxHeight = CameraHeightTrackBar.Value;
             Properties.Settings.Default.GoCameraPitch = ParticleCapTrackBar.Value;
             Properties.Settings.Default.Save();
 
-            if (GoModeRadio.Checked)
+            if (GoModeCheckBox.Checked)
             {
-                bool unlimited = GoUnlimitedRadio.Checked;
+                bool unlimited = GoUnlimitedCheckBox.Checked;
                 WriteGoCameraSettings(unlimited ? CameraHeightTrackBar.Value : 0,
                     unlimited ? ParticleCapTrackBar.Value : 0);
             }
@@ -990,9 +990,12 @@ namespace Contra
             }
         }
 
-        private void GoModeRadio_CheckedChanged(object sender, EventArgs e)
+        private void GoModeCheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            GoUnlimitedRadio.Enabled = GoModeRadio.Checked;
+            GoUnlimitedCheckBox.Enabled = GoModeCheckBox.Checked;
+
+            if (!GoModeCheckBox.Checked)
+                GoUnlimitedCheckBox.Checked = false;
 
             if (cameraControlsInitializing)
                 return;
@@ -1001,12 +1004,12 @@ namespace Contra
             ApplyCameraForCurrentMode();
         }
 
-        private void GoUnlimitedRadio_CheckedChanged(object sender, EventArgs e)
+        private void GoUnlimitedCheckBox_CheckedChanged(object sender, EventArgs e)
         {
             if (cameraControlsInitializing)
                 return;
 
-            if (GoModeRadio.Checked)
+            if (GoModeCheckBox.Checked)
                 ApplyCameraForCurrentMode();
         }
 
