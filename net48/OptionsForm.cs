@@ -129,6 +129,13 @@ namespace Contra
             // Populate Resolution comboBox with supported resolutions
             resolutionComboBox.DataSource = noDupes;
 
+            // Default to the highest supported resolution; the Options.ini parse below still wins
+            // when the user has a saved value.
+            string bestResolution = noDupes
+                .OrderByDescending(r => { var p = r.Split('x'); return long.Parse(p[0]) * long.Parse(p[1]); })
+                .First();
+            resolutionComboBox.SelectedItem = bestResolution;
+
             if (Globals.RU_Checked == true)
             {
                 labelResolution.Text = "Разрешение:";
