@@ -199,8 +199,24 @@ namespace Contra
             if (!string.IsNullOrEmpty(languageCode))
                 SetLanguage(languageCode);
             applyTexts?.Invoke();
+            SaveLanguageSelection();
             try { RetrieveMOTD(); }
             catch { }
+        }
+
+        /// <summary>
+        ///     Persists the language choice immediately. OnApplicationExit only runs on a clean shutdown, so a
+        ///     launcher that is closed by the task manager or crashes would otherwise come back in English.
+        /// </summary>
+        private void SaveLanguageSelection()
+        {
+            Properties.Settings.Default.Flag_GB = RadioFlag_GB.Checked;
+            Properties.Settings.Default.Flag_RU = RadioFlag_RU.Checked;
+            Properties.Settings.Default.Flag_UA = RadioFlag_UA.Checked;
+            Properties.Settings.Default.Flag_BG = RadioFlag_BG.Checked;
+            Properties.Settings.Default.Flag_DE = RadioFlag_DE.Checked;
+            Properties.Settings.Default.Flag_CN = RadioFlag_CN.Checked;
+            Properties.Settings.Default.Save();
         }
 
         private void OpenByLanguage(string enUrl, string ruUaUrl, string bgUrl, string deUrl = null, string cnUrl = null)
@@ -632,7 +648,7 @@ namespace Contra
                     QSCheckBox.Text = "快速启动";
                     RadioEN.Text = "英语";
                     RadioRU.Text = "简体中文";
-                    GoofyPics.Text = "搞笑";
+                    GoofyPics.Text = "恶搞";
                     LaunchBtn.Text = "启动";
                     OptionsBtn.Text = "选项";
                     WBBtn.Text = "地图编辑器";
@@ -644,15 +660,31 @@ namespace Contra
                     supportLabel.Text = "遇到问题";
                     GameFolderLabel.Text = "游戏";
                     DataFolderLabel.Text = "数据";
-                    UnitVoicesLabel.Text = "语音";
-                    LanguageLabel.Text = "语言";
-                    MusicLabel.Text = "音乐";
-                    PortraitsLabel.Text = "头像";
+                    UnitVoicesLabel.Text = "单位语音";
+                    LanguageLabel.Text = "游戏语言";
+                    MusicLabel.Text = "背景音乐";
+                    PortraitsLabel.Text = "将军头像";
+                    ApplyChineseFont(this);
                     verString = (betaPrefix == "ContraXBeta") ? "X Beta" : "X Beta 2";
                     if (betaPrefix != "ContraXBeta" && (File.Exists($"!!{betaPrefix}_Patch1.ctr") || File.Exists($"!!{betaPrefix}_Patch1.big")))
                         verString += " Patch 1";
                     versionLabel.Text = "Contra 项目组 " + yearString + " - 版本 " + verString + " - 启动器: " + Application.ProductVersion;
                 });
+            }
+        }
+
+        // Chinese glyphs fill their box more than Latin ones at the same nominal size, so the whole form moves to
+        // Microsoft YaHei and trims the non-display sizes slightly to keep Chinese lines as compact as English.
+        private const float ChineseFontSizeScale = 0.94f;
+
+        private static void ApplyChineseFont(Control parent)
+        {
+            Font source = parent.Font;
+            float size = source.Size >= 20f ? source.Size : Math.Max(7f, source.Size * ChineseFontSizeScale);
+            parent.Font = new Font("Microsoft YaHei", size, source.Style, source.Unit);
+            foreach (Control child in parent.Controls)
+            {
+                ApplyChineseFont(child);
             }
         }
 
@@ -1883,13 +1915,7 @@ namespace Contra
             Properties.Settings.Default.Windowed = WinCheckBox.Checked;
             Properties.Settings.Default.GenPicDef = DefaultPics.Checked;
             Properties.Settings.Default.GenPicGoo = GoofyPics.Checked;
-            Properties.Settings.Default.Flag_GB = RadioFlag_GB.Checked;
-            Properties.Settings.Default.Flag_RU = RadioFlag_RU.Checked;
-            Properties.Settings.Default.Flag_UA = RadioFlag_UA.Checked;
-            Properties.Settings.Default.Flag_BG = RadioFlag_BG.Checked;
-            Properties.Settings.Default.Flag_DE = RadioFlag_DE.Checked;
-            Properties.Settings.Default.Flag_CN = RadioFlag_CN.Checked;
-            Properties.Settings.Default.Save();
+            SaveLanguageSelection();
 
             DelTmpChunk();
             Close();
@@ -2349,7 +2375,8 @@ namespace Contra
                     }
                 }
 
-                // Determine user language and apply.
+                // Determine user language and apply. Chinese is detected here as well; the prompt below only
+                // fires when the launcher is not in Chinese, so a Chinese system is simply already correct.
                 if (GetCurrentCulture() == "en-US") RadioFlag_GB.Checked = true;
                 else if (GetCurrentCulture() == "ru-RU") RadioFlag_RU.Checked = true;
                 else if (GetCurrentCulture() == "uk-UA") RadioFlag_UA.Checked = true;
