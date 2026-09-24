@@ -222,6 +222,7 @@ namespace Contra
                 NoPreviewText.Text = "暂无预览";
                 AcceptBtn.Text = "确定";
                 CloseBtn.Text = "关闭";
+                ApplyChineseFont(Controls);
             }
             //TextureResLabel.Text = Messages.GenerateMessage("TextureRes", Globals.currentLanguage);
 
@@ -953,6 +954,16 @@ namespace Contra
                         MainForm.Url_open("https://www.gentool.net/");
                     return;
                 }
+            }
+        }
+
+        // Chinese reads better in YaHei; keep each control's own size and style.
+        private static void ApplyChineseFont(Control.ControlCollection controls)
+        {
+            foreach (Control control in controls)
+            {
+                control.Font = new Font("Microsoft YaHei", control.Font.Size, control.Font.Style, control.Font.Unit);
+                ApplyChineseFont(control.Controls);
             }
         }
     }
