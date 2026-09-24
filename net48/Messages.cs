@@ -154,15 +154,15 @@ namespace Contra
             
             ["ParticleCap"] = lang => ChooseByLanguage(lang, "Max Particle Count: ", "Количество частиц: ", "Кількість частинок: ", "Количество частици: ", "Partikelzahl: ", "最大粒子数:"),
 
-            ["GoCameraHeight"] = lang => ChooseByLanguage(lang, "GO Camera Height: ", "Высота камеры GO: ", "Висота камери GO: ", "Височина на камерата GO: ", "GO-Kamerahöhe: ", "GO 视角高度:"),
+            ["CameraPitch"] = lang => ChooseByLanguage(lang, "Camera Pitch: ", "Наклон камеры: ", "Нахил камери: ", "Наклон на камерата: ", "Kameraneigung: ", "视角角度:"),
 
-            ["GoCameraHeightDescription"] = lang => ChooseByLanguage(lang,
-                "Maximum zoom-out height for the\nGenerals Online client. Applies\nonly with OnlineUnlimited.",
-                "Максимальная высота отдаления\nкамеры клиента Generals Online.\nДействует только с OnlineUnlimited.",
-                "Максимальна висота віддалення\nкамери клієнта Generals Online.\nДіє лише з OnlineUnlimited.",
-                "Максимална висота отдалечаване\nна камерата на Generals Online.\nДейства само с OnlineUnlimited.",
-                "Maximale Herauszoom-Höhe des\nGenerals-Online-Clients. Gilt nur\nmit OnlineUnlimited.",
-                "GO 客户端的拉远高度上限。\n仅在开启 OnlineUnlimited\n时生效。"),
+            ["CameraPitchDescription"] = lang => ChooseByLanguage(lang,
+                "Camera pitch angle in degrees.\nVanilla writes d3d8.cfg, GO\nwrites settings.json.",
+                "Угол наклона камеры в градусах.\n vanilla пишет d3d8.cfg, GO —\nsettings.json.",
+                "Кут нахилу камери у градусах.\nvanilla пише d3d8.cfg, GO —\nsettings.json.",
+                "Ъгълът на наклон на камерата.\nvanilla пише d3d8.cfg, GO пише\nsettings.json.",
+                "Kameraneigung in Grad. Vanilla\nschreibt d3d8.cfg, GO schreibt\nsettings.json.",
+                "视角俯仰角度（度）。\n原版模式写入 d3d8.cfg，\nGO 模式写入 settings.json。"),
             
             ["TextureRes"] = lang => ChooseByLanguage(lang, "Texture Resolution: ", "Разр. текстур: ", "Розр. текстур: ", "Текстурна резол.: ", "Texturauflösung: ", "贴图精度:"),
             

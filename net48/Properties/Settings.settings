@@ -74,6 +74,9 @@
     <Setting Name="GoCameraMaxHeight" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">310</Value>
     </Setting>
+    <Setting Name="GoCameraPitch" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">51</Value>
+    </Setting>
     <Setting Name="UpgradeRequired" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>

@@ -92,13 +92,17 @@ namespace Contra
             GoUnlimitedRadio.Enabled = GoModeRadio.Checked;
             GoUnlimitedRadio.Checked = GoModeRadio.Checked && Properties.Settings.Default.GoUnlimitedCamera;
 
-            // The old particle cap slider doubles as the GO camera zoom-out height (settings.json).
-            ParticleCapTrackBar.Minimum = 210;
-            ParticleCapTrackBar.Maximum = 1000;
+            // The old particle cap slider doubles as the camera pitch (degrees). The height slider feeds
+            // GameData in vanilla mode and settings.json in GO mode - conversion happens on apply.
+            ParticleCapTrackBar.Minimum = 0;
+            ParticleCapTrackBar.Maximum = 80;
             ParticleCapTrackBar.Value = Math.Max(ParticleCapTrackBar.Minimum,
-                Math.Min(ParticleCapTrackBar.Maximum, Properties.Settings.Default.GoCameraMaxHeight));
-            ParticleCapLabel.Text = Messages.GenerateMessage("GoCameraHeight", Globals.currentLanguage)
+                Math.Min(ParticleCapTrackBar.Maximum, Properties.Settings.Default.GoCameraPitch));
+            ParticleCapLabel.Text = Messages.GenerateMessage("CameraPitch", Globals.currentLanguage)
                 + ParticleCapTrackBar.Value.ToString();
+
+            CameraHeightTrackBar.Minimum = 310;
+            CameraHeightTrackBar.Maximum = 1000;
 
             // Get supported resolutions
             DEVMODE vDevMode = new DEVMODE();
@@ -630,15 +634,25 @@ namespace Contra
                     return;
                 }
 
-                // Apply GO camera height (the old particle cap slider). Zero restores the client default.
-                Properties.Settings.Default.GoCameraMaxHeight = ParticleCapTrackBar.Value;
+                // Apply camera height & pitch. GO mode writes the client's settings.json; vanilla mode
+                // writes GameData and the GenTool d3d8.cfg. Zeroes restore the GO client defaults.
                 Properties.Settings.Default.GoClientMode = GoModeRadio.Checked;
                 Properties.Settings.Default.GoUnlimitedCamera = GoUnlimitedRadio.Checked;
+                Properties.Settings.Default.GoCameraMaxHeight = CameraHeightTrackBar.Value;
+                Properties.Settings.Default.GoCameraPitch = ParticleCapTrackBar.Value;
                 Properties.Settings.Default.Save();
 
-                WriteGoCameraMaxHeight(GoModeRadio.Checked && GoUnlimitedRadio.Checked
-                    ? ParticleCapTrackBar.Value
-                    : 0);
+                if (GoModeRadio.Checked)
+                {
+                    bool unlimited = GoUnlimitedRadio.Checked;
+                    WriteGoCameraSettings(unlimited ? CameraHeightTrackBar.Value : 0,
+                        unlimited ? ParticleCapTrackBar.Value : 0);
+                }
+                else
+                {
+                    WriteD3D8Config(ParticleCapTrackBar.Value, CameraHeightTrackBar.Value);
+                    WriteGoCameraSettings(0, 0);
+                }
 
                 // Apply Texture Resolution
                 if (TextureResTrackBar.Value == 1)
@@ -668,13 +682,16 @@ namespace Contra
             }
             else Messages.GenerateMessageBox("E_NotFound_OptionsIni", Globals.currentLanguage);
 
-            // Apply Camera Height
-            try { ChangeCamHeight(); }
-            catch (IOException)
+            // Apply Camera Height (GameData) - vanilla mode only; the GO client reads its own settings.
+            if (!GoModeRadio.Checked)
             {
-                if (File.Exists("!ContraXBeta_GameData.big")) Messages.GenerateMessageBox("E_CloseGameDataP3", Globals.currentLanguage);
+                try { ChangeCamHeight(); }
+                catch (IOException)
+                {
+                    if (File.Exists("!ContraXBeta_GameData.big")) Messages.GenerateMessageBox("E_CloseGameDataP3", Globals.currentLanguage);
+                }
+                catch (Exception ex) { MessageBox.Show(ex.Message.ToString()); }
             }
-            catch (Exception ex) { MessageBox.Show(ex.Message.ToString()); }
 
             // .big-file Options
             if (FogCheckBox.Checked)
@@ -942,21 +959,21 @@ namespace Contra
         }
         private void ParticleCapTrackBar_MouseHover(object sender, EventArgs e)
         {
-            ShowGraphicsInfo(Messages.GenerateMessage("GoCameraHeight", Globals.currentLanguage),
+            ShowGraphicsInfo(Messages.GenerateMessage("CameraPitch", Globals.currentLanguage),
                 Messages.GenerateMessage("PerformanceEffectHigh", Globals.currentLanguage),
-                Messages.GenerateMessage("GoCameraHeightDescription", Globals.currentLanguage), false);
+                Messages.GenerateMessage("CameraPitchDescription", Globals.currentLanguage), false);
         }
 
         private void ParticleCapTrackBar_Scroll(object sender, EventArgs e)
         {
-            ParticleCapLabel.Text = Messages.GenerateMessage("GoCameraHeight", Globals.currentLanguage) + ParticleCapTrackBar.Value.ToString();
+            ParticleCapLabel.Text = Messages.GenerateMessage("CameraPitch", Globals.currentLanguage) + ParticleCapTrackBar.Value.ToString();
         }
 
         /// <summary>
-        ///     Merges the GO camera zoom-out ceiling into the client's settings.json. Zero restores the
-        ///     client default; the rest of the file is left untouched so the client keeps its own fields.
+        ///     Merges the GO camera zoom-out height and pitch into the client's settings.json. Zeroes restore
+        ///     the client defaults; the rest of the file is left untouched so the client keeps its own fields.
         /// </summary>
-        private static void WriteGoCameraMaxHeight(int maxHeight)
+        private static void WriteGoCameraSettings(int maxHeight, int pitch)
         {
             try
             {
@@ -971,23 +988,17 @@ namespace Contra
 
                 if (string.IsNullOrWhiteSpace(json))
                 {
-                    json = "{\"camera\":{\"max_height\":" + maxHeight + "}}";
+                    json = "{\"camera\":{\"max_height\":" + maxHeight + ",\"pitch\":" + pitch + "}}";
                 }
                 else if (Regex.IsMatch(json, "\"camera\"\\s*:"))
                 {
-                    // "max_height" (exact key) cannot collide with "max_height_only_when_lobby_host".
-                    if (Regex.IsMatch(json, "\"max_height\"\\s*:"))
-                    {
-                        json = Regex.Replace(json, "\"max_height\"\\s*:\\s*[0-9.]+", "\"max_height\":" + maxHeight);
-                    }
-                    else
-                    {
-                        json = Regex.Replace(json, "(\"camera\"\\s*:\\s*\\{)", "$1\"max_height\":" + maxHeight + ",");
-                    }
+                    json = SetJsonCameraValue(json, "max_height", maxHeight);
+                    json = SetJsonCameraValue(json, "pitch", pitch);
                 }
                 else
                 {
-                    json = Regex.Replace(json, "^\\s*\\{", "{\n\"camera\":{\"max_height\":" + maxHeight + "},");
+                    json = Regex.Replace(json, "^\\s*\\{",
+                        "{\n\"camera\":{\"max_height\":" + maxHeight + ",\"pitch\":" + pitch + "},");
                 }
 
                 File.WriteAllText(path, json);
@@ -996,6 +1007,61 @@ namespace Contra
             {
                 // Settings.json belongs to the GO client; a missing or locked file must never block Options.
             }
+        }
+
+        /// <summary>
+        ///     Sets one numeric value inside the "camera" object, inserting the key when missing. The exact
+        ///     key match cannot collide with "max_height_only_when_lobby_host".
+        /// </summary>
+        private static string SetJsonCameraValue(string json, string key, int value)
+        {
+            if (Regex.IsMatch(json, "\"" + key + "\"\\s*:"))
+            {
+                return Regex.Replace(json, "\"" + key + "\"\\s*:\\s*[0-9.]+", "\"" + key + "\":" + value);
+            }
+
+            return Regex.Replace(json, "(\"camera\"\\s*:\\s*\\{)", "$1\"" + key + "\":" + value + ",");
+        }
+
+        /// <summary>
+        ///     GenTool expresses the zoom-out height as a percentage of the engine default (300 world units),
+        ///     so a slider value of 620 becomes camera=207 in d3d8.cfg.
+        /// </summary>
+        private const float GenToolCameraBase = 300.0f;
+
+        /// <summary>
+        ///     Writes the vanilla-mode camera pitch and zoom-out height into the GenTool d3d8.cfg.
+        /// </summary>
+        private static void WriteD3D8Config(int pitch, int cameraHeight)
+        {
+            try
+            {
+                int genToolCamera = (int)Math.Round(cameraHeight * 100.0 / GenToolCameraBase);
+                string path = Path.Combine(Environment.CurrentDirectory, "d3d8.cfg");
+                string content = File.Exists(path) ? File.ReadAllText(path) : "[gentool76]\r\n";
+
+                content = SetD3D8Value(content, "pitch", pitch.ToString());
+                content = SetD3D8Value(content, "camera", genToolCamera.ToString());
+
+                File.WriteAllText(path, content);
+            }
+            catch
+            {
+                // d3d8.cfg belongs to GenTool; a locked file must never block Options.
+            }
+        }
+
+        private static string SetD3D8Value(string content, string key, string value)
+        {
+            Regex replace = new Regex("(\\[gentool76\\][\\s\\S]*?^\\s*" + key + "\\s*=).*$",
+                RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+            if (replace.IsMatch(content))
+            {
+                return replace.Replace(content, "$1" + value, 1);
+            }
+
+            return content.TrimEnd() + "\r\n" + key + "=" + value + "\r\n";
         }
 
         private void TextureResTrackBar_Scroll(object sender, EventArgs e)
