@@ -94,8 +94,8 @@ namespace Contra
 
             // The old particle cap slider doubles as the camera pitch (degrees). The height slider feeds
             // GameData in vanilla mode and settings.json in GO mode - conversion happens on apply.
-            ParticleCapTrackBar.Minimum = 0;
-            ParticleCapTrackBar.Maximum = 80;
+            ParticleCapTrackBar.Minimum = 30;
+            ParticleCapTrackBar.Maximum = 90;
             ParticleCapTrackBar.Value = Math.Max(ParticleCapTrackBar.Minimum,
                 Math.Min(ParticleCapTrackBar.Maximum, Properties.Settings.Default.GoCameraPitch));
             ParticleCapLabel.Text = Messages.GenerateMessage("CameraPitch", Globals.currentLanguage)
