@@ -673,6 +673,27 @@
   <data name="RadioFlag_DE.TabIndex" type="System.Int32, mscorlib">
     <value>54</value>
   </data>
+  <data name="RadioFlag_CN.Appearance" type="System.Windows.Forms.Appearance, System.Windows.Forms">
+    <value>Button</value>
+  </data>
+  <data name="RadioFlag_CN.BackgroundImageLayout" type="System.Windows.Forms.ImageLayout, System.Windows.Forms">
+    <value>None</value>
+  </data>
+  <data name="RadioFlag_CN.FlatStyle" type="System.Windows.Forms.FlatStyle, System.Windows.Forms">
+    <value>Flat</value>
+  </data>
+  <data name="RadioFlag_CN.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+    <value>NoControl</value>
+  </data>
+  <data name="RadioFlag_CN.Location" type="System.Drawing.Point, System.Drawing">
+    <value>148, 3</value>
+  </data>
+  <data name="RadioFlag_CN.Size" type="System.Drawing.Size, System.Drawing">
+    <value>23, 17</value>
+  </data>
+  <data name="RadioFlag_CN.TabIndex" type="System.Int32, mscorlib">
+    <value>55</value>
+  </data>
   <data name="&gt;&gt;RadioFlag_DE.Name" xml:space="preserve">
     <value>RadioFlag_DE</value>
   </data>

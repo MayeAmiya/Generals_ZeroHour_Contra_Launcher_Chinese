@@ -47,6 +47,7 @@ namespace Contra
             this.RadioFlag_GB = new System.Windows.Forms.RadioButton();
             this.panel1 = new System.Windows.Forms.Panel();
             this.RadioFlag_DE = new System.Windows.Forms.RadioButton();
+            this.RadioFlag_CN = new System.Windows.Forms.RadioButton();
             this.RadioFlag_BG = new System.Windows.Forms.RadioButton();
             this.RadioFlag_UA = new System.Windows.Forms.RadioButton();
             this.RadioFlag_RU = new System.Windows.Forms.RadioButton();
@@ -277,6 +278,7 @@ namespace Contra
             this.panel1.BackColor = System.Drawing.Color.Transparent;
             resources.ApplyResources(this.panel1, "panel1");
             this.panel1.Controls.Add(this.RadioFlag_DE);
+            this.panel1.Controls.Add(this.RadioFlag_CN);
             this.panel1.Controls.Add(this.RadioFlag_BG);
             this.panel1.Controls.Add(this.RadioFlag_UA);
             this.panel1.Controls.Add(this.RadioFlag_RU);
@@ -299,6 +301,23 @@ namespace Contra
             this.RadioFlag_DE.CheckedChanged += new System.EventHandler(this.RadioFlag_DE_CheckedChanged);
             this.RadioFlag_DE.MouseEnter += new System.EventHandler(this.RadioFlag_DE_MouseEnter);
             this.RadioFlag_DE.MouseLeave += new System.EventHandler(this.RadioFlag_DE_MouseLeave);
+            // 
+            // RadioFlag_CN
+            // 
+            resources.ApplyResources(this.RadioFlag_CN, "RadioFlag_CN");
+            this.RadioFlag_CN.BackColor = System.Drawing.Color.Transparent;
+            this.RadioFlag_CN.BackgroundImage = global::Contra.Properties.Resources.flag_cn;
+            this.RadioFlag_CN.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.RadioFlag_CN.FlatAppearance.BorderSize = 0;
+            this.RadioFlag_CN.FlatAppearance.CheckedBackColor = System.Drawing.Color.Transparent;
+            this.RadioFlag_CN.FlatAppearance.MouseDownBackColor = System.Drawing.Color.Transparent;
+            this.RadioFlag_CN.FlatAppearance.MouseOverBackColor = System.Drawing.Color.Transparent;
+            this.RadioFlag_CN.Name = "RadioFlag_CN";
+            this.RadioFlag_CN.TabStop = true;
+            this.RadioFlag_CN.UseVisualStyleBackColor = false;
+            this.RadioFlag_CN.CheckedChanged += new System.EventHandler(this.RadioFlag_CN_CheckedChanged);
+            this.RadioFlag_CN.MouseEnter += new System.EventHandler(this.RadioFlag_CN_MouseEnter);
+            this.RadioFlag_CN.MouseLeave += new System.EventHandler(this.RadioFlag_CN_MouseLeave);
             // 
             // RadioFlag_BG
             // 
@@ -838,6 +857,7 @@ namespace Contra
         private System.Windows.Forms.RadioButton RadioFlag_RU;
         private System.Windows.Forms.ToolTip toolTip1;
         private System.Windows.Forms.RadioButton RadioFlag_DE;
+        private System.Windows.Forms.RadioButton RadioFlag_CN;
         private Marquee MOTD;
         private System.Windows.Forms.ProgressBar PatchDLProgressBar;
         private System.Windows.Forms.Panel PatchDLPanel;

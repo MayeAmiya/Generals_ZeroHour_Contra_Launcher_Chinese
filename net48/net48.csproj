@@ -181,6 +181,8 @@
     <None Include="README.md" />
     <None Include="Resources\flag_de_tr.png" />
     <None Include="Resources\flag_de.png" />
+    <None Include="Resources\flag_cn_tr.png" />
+    <None Include="Resources\flag_cn.png" />
     <None Include="Resources\flag_gb_tr.png" />
     <None Include="Resources\flag_bg_tr.png" />
     <None Include="Resources\flag_ua_tr.png" />

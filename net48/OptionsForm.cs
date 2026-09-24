@@ -195,6 +195,34 @@ namespace Contra
                 AcceptBtn.Text = "AKZEPTIEREN";
                 CloseBtn.Text = "SCHLIESSEN";
             }
+            else if (Globals.CN_Checked == true)
+            {
+                labelResolution.Text = "分辨率:";
+                Shadows3DCheckBox.Text = "3D 阴影";
+                Shadows2DCheckBox.Text = "2D 阴影";
+                CloudShadowsCheckBox.Text = "云层阴影";
+                ExtraGroundLightingCheckBox.Text = "地面光照";
+                SmoothWaterBordersCheckBox.Text = "平滑水岸";
+                BehindBuildingsCheckBox.Text = "建筑后单位";
+                ShowPropsCheckBox.Text = "场景物件";
+                ExtraAnimationsCheckBox.Text = "额外动画";
+                DisableDynamicLODCheckBox.Text = "关闭动态细节";
+                HeatEffectsCheckBox.Text = "热浪特效";
+                FogCheckBox.Text = "雾效";
+                LangFilterCheckBox.Text = "聊天过滤";
+                WaterEffectsCheckBox.Text = "水面特效";
+                CameraHeightLabel.Text = "镜头高度: ?";
+                HotkeyStyleLabel.Text = "快捷键风格";
+                LegacyHotkeysRadioButton.Text = "原版";
+                AnisoCheckBox.Text = "各向异性过滤";
+                CameosStandardRadioButton.Text = LegacyHotkeysRadioButton.Text = ControlBarStandardRadioButton.Text = "标准";
+                ControlBarLabel.Text = "操作栏";
+                IconQualityLabel.Text = "图标精度";
+                ExtraBuildingPropsCheckBox.Text = "额外建筑装饰";
+                NoPreviewText.Text = "暂无预览";
+                AcceptBtn.Text = "确定";
+                CloseBtn.Text = "关闭";
+            }
             //TextureResLabel.Text = Messages.GenerateMessage("TextureRes", Globals.currentLanguage);
 
             // Load settings from Options.ini to display them in our Options form

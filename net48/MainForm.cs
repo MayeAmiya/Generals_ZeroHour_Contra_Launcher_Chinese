@@ -601,6 +601,60 @@ namespace Contra
             }
         }
 
+        private void RadioFlag_CN_CheckedChanged(object sender, EventArgs e)
+        {
+            if (RadioFlag_CN.Checked)
+            {
+                ApplyLanguageSelection("zh-CN", "CN", () =>
+                {
+                    toolTip1.SetToolTip(RadioLocQuotes, "所有阵营的单位将使用英语配音。");
+                    toolTip1.SetToolTip(RadioOrigQuotes, "各阵营单位使用其母语配音。");
+                    toolTip1.SetToolTip(RadioEN, "游戏内语言:英语。");
+                    toolTip1.SetToolTip(RadioRU, "游戏内语言:俄语。");
+                    toolTip1.SetToolTip(MNew, "使用 Charlie Lockwood 的 \"Enhanced\" 原声。");
+                    toolTip1.SetToolTip(MStandard, "使用绝命时刻标准原声。");
+                    toolTip1.SetToolTip(MTheScore, "使用 Daniel Marcello 的 \"The Score\" 原声。");
+                    toolTip1.SetToolTip(DefaultPics, "使用默认将军头像。");
+                    toolTip1.SetToolTip(GoofyPics, "使用搞笑将军头像。");
+                    toolTip1.SetToolTip(WinCheckBox, "以窗口模式启动 Contra,而非全屏。");
+                    toolTip1.SetToolTip(QSCheckBox, "跳过开场动画和 shellmap(加快启动)。");
+                    toolTip1.SetToolTip(DonateBtn, "向 Contra 项目组捐款。");
+                    toolTip1.SetToolTip(linkYouTubePred, "访问 PredatoR 的 YouTube 频道。");
+                    toolTip1.SetToolTip(linkYouTubeDce, "访问 dce 的 YouTube 频道。");
+                    currentFileLabel = "文件: ";
+                    ModDLLabel.Text = "下载进度: ";
+                    CancelModDLBtn.Text = "取消";
+                    RadioLocQuotes.Text = "英语";
+                    RadioOrigQuotes.Text = "母语";
+                    DefaultPics.Text = MStandard.Text = "标准";
+                    WinCheckBox.Text = "窗口化";
+                    QSCheckBox.Text = "快速启动";
+                    RadioEN.Text = "英语";
+                    RadioRU.Text = "俄语";
+                    GoofyPics.Text = "搞笑";
+                    LaunchBtn.Text = "启动";
+                    OptionsBtn.Text = "选项";
+                    WBBtn.Text = "地图编辑器";
+                    ExitBtn.Text = "退出";
+                    DonateBtn.Text = "支持我们";
+                    onlineInstructionsLabel.Text = "联机教程";
+                    replaysLabel.Text = "对战录像";
+                    customAddonsLabel.Text = "地图与扩展";
+                    supportLabel.Text = "遇到问题";
+                    GameFolderLabel.Text = "游戏";
+                    DataFolderLabel.Text = "数据";
+                    UnitVoicesLabel.Text = "语音";
+                    LanguageLabel.Text = "语言";
+                    MusicLabel.Text = "音乐";
+                    PortraitsLabel.Text = "头像";
+                    verString = (betaPrefix == "ContraXBeta") ? "X Beta" : "X Beta 2";
+                    if (betaPrefix != "ContraXBeta" && (File.Exists($"!!{betaPrefix}_Patch1.ctr") || File.Exists($"!!{betaPrefix}_Patch1.big")))
+                        verString += " Patch 1";
+                    versionLabel.Text = "Contra 项目组 " + yearString + " - 版本 " + verString + " - 启动器: " + Application.ProductVersion;
+                });
+            }
+        }
+
         public async void GetModUpdate(string versionsTXT, string patch_url)
         {
             string zip_url = null;
@@ -1343,6 +1397,15 @@ namespace Contra
             RadioFlag_DE.BackgroundImage = Properties.Resources.flag_de;
         }
 
+        private void RadioFlag_CN_MouseEnter(object sender, EventArgs e)
+        {
+            RadioFlag_CN.BackgroundImage = Properties.Resources.flag_cn_tr;
+        }
+        private void RadioFlag_CN_MouseLeave(object sender, EventArgs e)
+        {
+            RadioFlag_CN.BackgroundImage = Properties.Resources.flag_cn;
+        }
+
         private void ExitBtn_MouseEnter(object sender, EventArgs e)
         {
             ExitBtn.BackgroundImage = Properties.Resources._button_big_hover;
@@ -1772,12 +1835,7 @@ namespace Contra
             RadioFlag_UA.Checked = Properties.Settings.Default.Flag_UA;
             RadioFlag_BG.Checked = Properties.Settings.Default.Flag_BG;
             RadioFlag_DE.Checked = Properties.Settings.Default.Flag_DE;
-            // Chinese has no flag radio button on the form yet, so apply a persisted Chinese choice directly.
-            if (Properties.Settings.Default.Flag_CN)
-            {
-                SetLanguage("CN");
-            }
-
+            RadioFlag_CN.Checked = Properties.Settings.Default.Flag_CN;
             AutoScaleMode = AutoScaleMode.Dpi;
         }
 
@@ -1821,7 +1879,7 @@ namespace Contra
             Properties.Settings.Default.Flag_UA = RadioFlag_UA.Checked;
             Properties.Settings.Default.Flag_BG = RadioFlag_BG.Checked;
             Properties.Settings.Default.Flag_DE = RadioFlag_DE.Checked;
-            Properties.Settings.Default.Flag_CN = Globals.CN_Checked;
+            Properties.Settings.Default.Flag_CN = RadioFlag_CN.Checked;
             Properties.Settings.Default.Save();
 
             DelTmpChunk();
@@ -2288,6 +2346,7 @@ namespace Contra
                 else if (GetCurrentCulture() == "uk-UA") RadioFlag_UA.Checked = true;
                 else if (GetCurrentCulture() == "bg-BG") RadioFlag_BG.Checked = true;
                 else if (GetCurrentCulture() == "de-DE") RadioFlag_DE.Checked = true;
+                else if (GetCurrentCulture() == "zh-CN" || GetCurrentCulture() == "zh-Hans") RadioFlag_CN.Checked = true;
                 else RadioFlag_GB.Checked = true;
 
                 // Show message on first run.

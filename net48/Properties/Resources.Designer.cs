@@ -513,6 +513,26 @@ namespace Contra.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap flag_cn {
+            get {
+                object obj = ResourceManager.GetObject("flag_cn", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap flag_cn_tr {
+            get {
+                object obj = ResourceManager.GetObject("flag_cn_tr", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap flag_gb {
             get {
                 object obj = ResourceManager.GetObject("flag_gb", resourceCulture);
