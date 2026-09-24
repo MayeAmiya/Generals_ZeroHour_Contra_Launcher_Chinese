@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -6,8 +7,12 @@ namespace Contra
     public partial class Marquee : Label
     {
 
+            // Runtime state, not designer state: the WinForms designers must not try to serialize these.
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
             public Timer MarqueeTimer { get; set; }
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
             public int Speed { get; set; }
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
             public int yOffset { get; set; }
 
             public void Start() { MarqueeTimer.Start(); }
