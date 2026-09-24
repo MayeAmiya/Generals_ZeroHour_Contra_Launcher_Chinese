@@ -64,6 +64,9 @@ namespace Contra
         private RadioButton GoModeRadio;
         private RadioButton GoUnlimitedRadio;
 
+        // Guards the radio handlers against the programmatic Checked assignments during construction.
+        private bool cameraControlsInitializing = true;
+
         public OptionsForm()
         {
             InitializeComponent();
@@ -87,10 +90,12 @@ namespace Contra
             GoUnlimitedRadio.Location = new Point(685, 374);
             Controls.Add(GoUnlimitedRadio);
 
-            GoModeRadio.CheckedChanged += (s, e) => GoUnlimitedRadio.Enabled = GoModeRadio.Checked;
+            GoModeRadio.CheckedChanged += GoModeRadio_CheckedChanged;
+            GoUnlimitedRadio.CheckedChanged += GoUnlimitedRadio_CheckedChanged;
             GoModeRadio.Checked = Properties.Settings.Default.GoClientMode;
             GoUnlimitedRadio.Enabled = GoModeRadio.Checked;
             GoUnlimitedRadio.Checked = GoModeRadio.Checked && Properties.Settings.Default.GoUnlimitedCamera;
+            cameraControlsInitializing = false;
 
             // The old particle cap slider doubles as the camera pitch (degrees). The height slider feeds
             // GameData in vanilla mode and settings.json in GO mode - conversion happens on apply.
@@ -634,25 +639,8 @@ namespace Contra
                     return;
                 }
 
-                // Apply camera height & pitch. GO mode writes the client's settings.json; vanilla mode
-                // writes GameData and the GenTool d3d8.cfg. Zeroes restore the GO client defaults.
-                Properties.Settings.Default.GoClientMode = GoModeRadio.Checked;
-                Properties.Settings.Default.GoUnlimitedCamera = GoUnlimitedRadio.Checked;
-                Properties.Settings.Default.GoCameraMaxHeight = CameraHeightTrackBar.Value;
-                Properties.Settings.Default.GoCameraPitch = ParticleCapTrackBar.Value;
-                Properties.Settings.Default.Save();
-
-                if (GoModeRadio.Checked)
-                {
-                    bool unlimited = GoUnlimitedRadio.Checked;
-                    WriteGoCameraSettings(unlimited ? CameraHeightTrackBar.Value : 0,
-                        unlimited ? ParticleCapTrackBar.Value : 0);
-                }
-                else
-                {
-                    WriteD3D8Config(ParticleCapTrackBar.Value, CameraHeightTrackBar.Value);
-                    WriteGoCameraSettings(0, 0);
-                }
+                // Apply camera height & pitch for the selected mode.
+                ApplyCameraForCurrentMode();
 
                 // Apply Texture Resolution
                 if (TextureResTrackBar.Value == 1)
@@ -681,17 +669,6 @@ namespace Contra
                 }
             }
             else Messages.GenerateMessageBox("E_NotFound_OptionsIni", Globals.currentLanguage);
-
-            // Apply Camera Height (GameData) - vanilla mode only; the GO client reads its own settings.
-            if (!GoModeRadio.Checked)
-            {
-                try { ChangeCamHeight(); }
-                catch (IOException)
-                {
-                    if (File.Exists("!ContraXBeta_GameData.big")) Messages.GenerateMessageBox("E_CloseGameDataP3", Globals.currentLanguage);
-                }
-                catch (Exception ex) { MessageBox.Show(ex.Message.ToString()); }
-            }
 
             // .big-file Options
             if (FogCheckBox.Checked)
@@ -967,6 +944,60 @@ namespace Contra
         private void ParticleCapTrackBar_Scroll(object sender, EventArgs e)
         {
             ParticleCapLabel.Text = Messages.GenerateMessage("CameraPitch", Globals.currentLanguage) + ParticleCapTrackBar.Value.ToString();
+        }
+
+        /// <summary>
+        ///     Persists the current camera state and writes it to the config of the selected mode:
+        ///     GO mode merges into settings.json (zeroes restore client defaults unless OnlineUnlimited
+        ///     is picked), vanilla mode writes GameData and the GenTool d3d8.cfg. Runs on every mode
+        ///     switch so the other side always holds the state visible at that moment.
+        /// </summary>
+        private void ApplyCameraForCurrentMode()
+        {
+            Properties.Settings.Default.GoClientMode = GoModeRadio.Checked;
+            Properties.Settings.Default.GoUnlimitedCamera = GoUnlimitedRadio.Checked;
+            Properties.Settings.Default.GoCameraMaxHeight = CameraHeightTrackBar.Value;
+            Properties.Settings.Default.GoCameraPitch = ParticleCapTrackBar.Value;
+            Properties.Settings.Default.Save();
+
+            if (GoModeRadio.Checked)
+            {
+                bool unlimited = GoUnlimitedRadio.Checked;
+                WriteGoCameraSettings(unlimited ? CameraHeightTrackBar.Value : 0,
+                    unlimited ? ParticleCapTrackBar.Value : 0);
+            }
+            else
+            {
+                try { ChangeCamHeight(); }
+                catch (IOException)
+                {
+                    if (File.Exists("!ContraXBeta_GameData.big")) Messages.GenerateMessageBox("E_CloseGameDataP3", Globals.currentLanguage);
+                }
+                catch (Exception ex) { MessageBox.Show(ex.Message.ToString()); }
+
+                WriteD3D8Config(ParticleCapTrackBar.Value, CameraHeightTrackBar.Value);
+                WriteGoCameraSettings(0, 0);
+            }
+        }
+
+        private void GoModeRadio_CheckedChanged(object sender, EventArgs e)
+        {
+            GoUnlimitedRadio.Enabled = GoModeRadio.Checked;
+
+            if (cameraControlsInitializing)
+                return;
+
+            // Switching sides pushes the state visible right now into the other mode's config.
+            ApplyCameraForCurrentMode();
+        }
+
+        private void GoUnlimitedRadio_CheckedChanged(object sender, EventArgs e)
+        {
+            if (cameraControlsInitializing)
+                return;
+
+            if (GoModeRadio.Checked)
+                ApplyCameraForCurrentMode();
         }
 
         /// <summary>
