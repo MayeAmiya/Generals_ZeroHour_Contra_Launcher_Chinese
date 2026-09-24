@@ -83,6 +83,7 @@ namespace Contra
             GoModeCheckBox.AutoSize = true;
             GoModeCheckBox.Location = new Point(658, 150);
             GoModeCheckBox.BackColor = Color.Transparent;
+            GoModeCheckBox.ForeColor = Color.White;
             GoModeCheckBox.UseVisualStyleBackColor = false;
             Controls.Add(GoModeCheckBox);
 
@@ -91,6 +92,7 @@ namespace Contra
             GoUnlimitedCheckBox.AutoSize = true;
             GoUnlimitedCheckBox.Location = new Point(658, 176);
             GoUnlimitedCheckBox.BackColor = Color.Transparent;
+            GoUnlimitedCheckBox.ForeColor = Color.White;
             GoUnlimitedCheckBox.UseVisualStyleBackColor = false;
             Controls.Add(GoUnlimitedCheckBox);
 
