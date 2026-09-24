@@ -610,7 +610,7 @@ namespace Contra
                     toolTip1.SetToolTip(RadioLocQuotes, "所有阵营的单位将使用英语配音。");
                     toolTip1.SetToolTip(RadioOrigQuotes, "各阵营单位使用其母语配音。");
                     toolTip1.SetToolTip(RadioEN, "游戏内语言:英语。");
-                    toolTip1.SetToolTip(RadioRU, "游戏内语言:俄语。");
+                    toolTip1.SetToolTip(RadioRU, "游戏内语言:简体中文。");
                     toolTip1.SetToolTip(MNew, "使用 Charlie Lockwood 的 \"Enhanced\" 原声。");
                     toolTip1.SetToolTip(MStandard, "使用绝命时刻标准原声。");
                     toolTip1.SetToolTip(MTheScore, "使用 Daniel Marcello 的 \"The Score\" 原声。");
@@ -630,7 +630,7 @@ namespace Contra
                     WinCheckBox.Text = "窗口化";
                     QSCheckBox.Text = "快速启动";
                     RadioEN.Text = "英语";
-                    RadioRU.Text = "俄语";
+                    RadioRU.Text = "简体中文";
                     GoofyPics.Text = "搞笑";
                     LaunchBtn.Text = "启动";
                     OptionsBtn.Text = "选项";
@@ -953,10 +953,14 @@ namespace Contra
                 else if (RadioEN.Checked && (Properties.Settings.Default.LegacyHotkeys == true) && File.Exists($"!{betaPrefix}_HotkeysOriginal_English.ctr"))
                     File.Move($"!{betaPrefix}_HotkeysOriginal_English.ctr", $"!{betaPrefix}_HotkeysOriginal_English.big");
 
-                if (RadioRU.Checked && (Properties.Settings.Default.LeikezeHotkeys == true) && File.Exists($"!{betaPrefix}_HotkeysLeikeze_Russian.ctr"))
-                    File.Move($"!{betaPrefix}_HotkeysLeikeze_Russian.ctr", $"!{betaPrefix}_HotkeysLeikeze_Russian.big");
-                else if (RadioRU.Checked && (Properties.Settings.Default.LegacyHotkeys == true) && File.Exists($"!{betaPrefix}_HotkeysOriginal_Russian.ctr"))
-                    File.Move($"!{betaPrefix}_HotkeysOriginal_Russian.ctr", $"!{betaPrefix}_HotkeysOriginal_Russian.big");
+                // The Chinese build ships a Chinese language pack where the Russian one used to be, so the
+                // second language option activates the Chinese files while the launcher runs in Chinese.
+                string secondLanguageSuffix = Globals.CN_Checked ? "Chinese" : "Russian";
+
+                if (RadioRU.Checked && (Properties.Settings.Default.LeikezeHotkeys == true) && File.Exists($"!{betaPrefix}_HotkeysLeikeze_{secondLanguageSuffix}.ctr"))
+                    File.Move($"!{betaPrefix}_HotkeysLeikeze_{secondLanguageSuffix}.ctr", $"!{betaPrefix}_HotkeysLeikeze_{secondLanguageSuffix}.big");
+                else if (RadioRU.Checked && (Properties.Settings.Default.LegacyHotkeys == true) && File.Exists($"!{betaPrefix}_HotkeysOriginal_{secondLanguageSuffix}.ctr"))
+                    File.Move($"!{betaPrefix}_HotkeysOriginal_{secondLanguageSuffix}.ctr", $"!{betaPrefix}_HotkeysOriginal_{secondLanguageSuffix}.big");
 
                 if (MNew.Checked && File.Exists($"!ContraXBeta_NewMusic.ctr"))
                     File.Move($"!ContraXBeta_NewMusic.ctr", $"!ContraXBeta_NewMusic.big");
@@ -1598,8 +1602,10 @@ namespace Contra
                     $"!!{betaPrefix}_MusicTheScore",
                     $"!{betaPrefix}_HotkeysLeikeze_English",
                     $"!{betaPrefix}_HotkeysLeikeze_Russian",
+                    $"!{betaPrefix}_HotkeysLeikeze_Chinese",
                     $"!{betaPrefix}_HotkeysOriginal_English",
-                    $"!{betaPrefix}_HotkeysOriginal_Russian"
+                    $"!{betaPrefix}_HotkeysOriginal_Russian",
+                    $"!{betaPrefix}_HotkeysOriginal_Chinese"
                 };
             foreach (string filename in filenames)
             {
@@ -1649,8 +1655,10 @@ namespace Contra
                     $"!!{betaPrefix}_MusicTheScore.big",
                     $"!{betaPrefix}_HotkeysLeikeze_English.big",
                     $"!{betaPrefix}_HotkeysLeikeze_Russian.big",
+                    $"!{betaPrefix}_HotkeysLeikeze_Chinese.big",
                     $"!{betaPrefix}_HotkeysOriginal_English.big",
-                    $"!{betaPrefix}_HotkeysOriginal_Russian.big"
+                    $"!{betaPrefix}_HotkeysOriginal_Russian.big",
+                    $"!{betaPrefix}_HotkeysOriginal_Chinese.big"
                 };
                 foreach (string big in bigs)
                 {
@@ -2462,6 +2470,26 @@ namespace Contra
 
                 Properties.Settings.Default.FirstRun = false;
                 Properties.Settings.Default.Save();
+            }
+
+            // The flag panel has no room for a sixth button, so Chinese is offered at startup instead.
+            // The prompt is bilingual so a player who has not picked Chinese can still read it, and a
+            // refusal is remembered so it is not asked again.
+            if (!RadioFlag_CN.Checked && !Properties.Settings.Default.ChinesePromptDismissed)
+            {
+                DialogResult switchToChinese = MessageBox.Show(
+                    new Form { TopMost = true },
+                    "Switch the launcher to Simplified Chinese?\n\n是否将启动器界面切换为简体中文?",
+                    "Language / 语言",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+                if (switchToChinese == DialogResult.Yes)
+                    RadioFlag_CN.Checked = true;
+                else
+                {
+                    Properties.Settings.Default.ChinesePromptDismissed = true;
+                    Properties.Settings.Default.Save();
+                }
             }
 
             // Show warning if the base mod isn't found.
