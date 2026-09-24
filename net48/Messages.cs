@@ -153,6 +153,16 @@ namespace Contra
             ["CameraHeightString"] = lang => ChooseByLanguage(lang, "Camera Height: ", "Высота камеры: ", "Висота камери: ", "Вис. на камерата: ", "Kamerahöhe: ", "镜头高度:"),
             
             ["ParticleCap"] = lang => ChooseByLanguage(lang, "Max Particle Count: ", "Количество частиц: ", "Кількість частинок: ", "Количество частици: ", "Partikelzahl: ", "最大粒子数:"),
+
+            ["GoCameraHeight"] = lang => ChooseByLanguage(lang, "GO Camera Height: ", "Высота камеры GO: ", "Висота камери GO: ", "Височина на камерата GO: ", "GO-Kamerahöhe: ", "GO 视角高度:"),
+
+            ["GoCameraHeightDescription"] = lang => ChooseByLanguage(lang,
+                "Maximum zoom-out height for the\nGenerals Online client. Applies\nonly with OnlineUnlimited.",
+                "Максимальная высота отдаления\nкамеры клиента Generals Online.\nДействует только с OnlineUnlimited.",
+                "Максимальна висота віддалення\nкамери клієнта Generals Online.\nДіє лише з OnlineUnlimited.",
+                "Максимална висота отдалечаване\nна камерата на Generals Online.\nДейства само с OnlineUnlimited.",
+                "Maximale Herauszoom-Höhe des\nGenerals-Online-Clients. Gilt nur\nmit OnlineUnlimited.",
+                "GO 客户端的拉远高度上限。\n仅在开启 OnlineUnlimited\n时生效。"),
             
             ["TextureRes"] = lang => ChooseByLanguage(lang, "Texture Resolution: ", "Разр. текстур: ", "Розр. текстур: ", "Текстурна резол.: ", "Texturauflösung: ", "贴图精度:"),
             

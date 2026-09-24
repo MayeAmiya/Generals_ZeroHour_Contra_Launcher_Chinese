@@ -274,6 +274,42 @@ namespace Contra.Properties {
                 this["Flag_CN"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool GoClientMode {
+            get {
+                return ((bool)(this["GoClientMode"]));
+            }
+            set {
+                this["GoClientMode"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool GoUnlimitedCamera {
+            get {
+                return ((bool)(this["GoUnlimitedCamera"]));
+            }
+            set {
+                this["GoUnlimitedCamera"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("310")]
+        public int GoCameraMaxHeight {
+            get {
+                return ((int)(this["GoCameraMaxHeight"]));
+            }
+            set {
+                this["GoCameraMaxHeight"] = value;
+            }
+        }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]

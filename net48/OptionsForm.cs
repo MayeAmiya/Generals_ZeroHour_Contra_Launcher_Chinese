@@ -60,6 +60,10 @@ namespace Contra
         // Bool that helps check if heat effects checkbox has been checked by the user and not automatically
         bool heatEffectsCheckBoxIsClicked = false;
 
+        // Generals Online launch mode radios (created in the constructor).
+        private RadioButton GoModeRadio;
+        private RadioButton GoUnlimitedRadio;
+
         public OptionsForm()
         {
             InitializeComponent();
@@ -68,6 +72,33 @@ namespace Contra
             MinBtnSm.TabStop = false;
             ExitBtnSm.TabStop = false;
             resolutionComboBox.TabStop = false;
+
+            // Generals Online launch mode and its unlimited-camera extension. The second option only
+            // becomes selectable once the first is picked.
+            GoModeRadio = new RadioButton();
+            GoModeRadio.Text = "Generals\r\nOnline";
+            GoModeRadio.AutoSize = true;
+            GoModeRadio.Location = new Point(545, 368);
+            Controls.Add(GoModeRadio);
+
+            GoUnlimitedRadio = new RadioButton();
+            GoUnlimitedRadio.Text = "OnlineUnlimited";
+            GoUnlimitedRadio.AutoSize = true;
+            GoUnlimitedRadio.Location = new Point(685, 374);
+            Controls.Add(GoUnlimitedRadio);
+
+            GoModeRadio.CheckedChanged += (s, e) => GoUnlimitedRadio.Enabled = GoModeRadio.Checked;
+            GoModeRadio.Checked = Properties.Settings.Default.GoClientMode;
+            GoUnlimitedRadio.Enabled = GoModeRadio.Checked;
+            GoUnlimitedRadio.Checked = GoModeRadio.Checked && Properties.Settings.Default.GoUnlimitedCamera;
+
+            // The old particle cap slider doubles as the GO camera zoom-out height (settings.json).
+            ParticleCapTrackBar.Minimum = 210;
+            ParticleCapTrackBar.Maximum = 1000;
+            ParticleCapTrackBar.Value = Math.Max(ParticleCapTrackBar.Minimum,
+                Math.Min(ParticleCapTrackBar.Maximum, Properties.Settings.Default.GoCameraMaxHeight));
+            ParticleCapLabel.Text = Messages.GenerateMessage("GoCameraHeight", Globals.currentLanguage)
+                + ParticleCapTrackBar.Value.ToString();
 
             // Get supported resolutions
             DEVMODE vDevMode = new DEVMODE();
@@ -291,14 +322,10 @@ namespace Contra
                             resolutionComboBox.Text = s2;
                             Properties.Settings.Default.Res = s2;
                         }
-                        // Get current particle cap
+                        // Particle cap no longer lives here; the slider is the GO camera height now.
                         if (line.ToLower().Contains("maxparticlecount ="))
                         {
                             found.Add(line);
-                            s = line;
-                            s = s.Substring(s.IndexOf('=') + 2);
-                            s = s.TrimEnd();
-                            ParticleCapTrackBar.Value = Convert.ToInt32(s);
                         }
                         // Get current texture resolution
                         if (line.ToLower().Contains("texturereduction ="))
@@ -603,12 +630,15 @@ namespace Contra
                     return;
                 }
 
-                // Apply Particle Cap
-                File.WriteAllText(Globals.myDocPath + "Options.ini",
-                    Regex.Replace(File.ReadAllText(Globals.myDocPath + "Options.ini"),
-                    "\r?\nMaxParticleCount =.*",
-                    "\r\nMaxParticleCount = " + ParticleCapTrackBar.Value + "\r",
-                    RegexOptions.IgnoreCase));
+                // Apply GO camera height (the old particle cap slider). Zero restores the client default.
+                Properties.Settings.Default.GoCameraMaxHeight = ParticleCapTrackBar.Value;
+                Properties.Settings.Default.GoClientMode = GoModeRadio.Checked;
+                Properties.Settings.Default.GoUnlimitedCamera = GoUnlimitedRadio.Checked;
+                Properties.Settings.Default.Save();
+
+                WriteGoCameraMaxHeight(GoModeRadio.Checked && GoUnlimitedRadio.Checked
+                    ? ParticleCapTrackBar.Value
+                    : 0);
 
                 // Apply Texture Resolution
                 if (TextureResTrackBar.Value == 1)
@@ -912,14 +942,60 @@ namespace Contra
         }
         private void ParticleCapTrackBar_MouseHover(object sender, EventArgs e)
         {
-            ShowGraphicsInfo(Messages.GenerateMessage("ParticleCap", Globals.currentLanguage),
+            ShowGraphicsInfo(Messages.GenerateMessage("GoCameraHeight", Globals.currentLanguage),
                 Messages.GenerateMessage("PerformanceEffectHigh", Globals.currentLanguage),
-                Messages.GenerateMessage("ParticleCapDescription", Globals.currentLanguage), false);
+                Messages.GenerateMessage("GoCameraHeightDescription", Globals.currentLanguage), false);
         }
 
         private void ParticleCapTrackBar_Scroll(object sender, EventArgs e)
         {
-            ParticleCapLabel.Text = Messages.GenerateMessage("ParticleCap", Globals.currentLanguage) + ParticleCapTrackBar.Value.ToString();
+            ParticleCapLabel.Text = Messages.GenerateMessage("GoCameraHeight", Globals.currentLanguage) + ParticleCapTrackBar.Value.ToString();
+        }
+
+        /// <summary>
+        ///     Merges the GO camera zoom-out ceiling into the client's settings.json. Zero restores the
+        ///     client default; the rest of the file is left untouched so the client keeps its own fields.
+        /// </summary>
+        private static void WriteGoCameraMaxHeight(int maxHeight)
+        {
+            try
+            {
+                string dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "Command and Conquer Generals Zero Hour Data",
+                    "GeneralsOnlineData");
+                Directory.CreateDirectory(dir);
+
+                string path = Path.Combine(dir, "settings.json");
+                string json = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
+
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    json = "{\"camera\":{\"max_height\":" + maxHeight + "}}";
+                }
+                else if (Regex.IsMatch(json, "\"camera\"\\s*:"))
+                {
+                    // "max_height" (exact key) cannot collide with "max_height_only_when_lobby_host".
+                    if (Regex.IsMatch(json, "\"max_height\"\\s*:"))
+                    {
+                        json = Regex.Replace(json, "\"max_height\"\\s*:\\s*[0-9.]+", "\"max_height\":" + maxHeight);
+                    }
+                    else
+                    {
+                        json = Regex.Replace(json, "(\"camera\"\\s*:\\s*\\{)", "$1\"max_height\":" + maxHeight + ",");
+                    }
+                }
+                else
+                {
+                    json = Regex.Replace(json, "^\\s*\\{", "{\n\"camera\":{\"max_height\":" + maxHeight + "},");
+                }
+
+                File.WriteAllText(path, json);
+            }
+            catch
+            {
+                // Settings.json belongs to the GO client; a missing or locked file must never block Options.
+            }
         }
 
         private void TextureResTrackBar_Scroll(object sender, EventArgs e)
