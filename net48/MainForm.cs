@@ -9,7 +9,6 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Management;
 using System.Net;
 using System.Net.Http;
 using System.Runtime.InteropServices;
@@ -2421,41 +2420,6 @@ namespace Contra
                         RegexOptions.IgnoreCase));
                 }
                 catch { }
-
-                // Get CPU specs to determine default graphical settings
-                //ObjectQuery wql = new ObjectQuery("SELECT * FROM Win32_Processor");
-                //ManagementObjectSearcher searcher = new ManagementObjectSearcher(wql);
-                //ManagementObjectCollection results = searcher.Get();
-                //foreach (ManagementObject result in results)
-                //{
-                //    Globals.cpuSpeed = Convert.ToInt32(result["MaxClockSpeed"]);
-
-                //    if (Globals.cpuSpeed < 3300) // We consider base clock less than 3300 MHz to be insufficient for stable FPS.
-                //                                 // If that's the case, we disable 3D shadows, water reflections, extra building props and enable Dynamic LOD,
-                //                                 // as they are the most demanding graphical settings.
-                //    {
-                //        Messages.GenerateMessageBox("I_WeakCPU", Globals.currentLanguage);
-
-                //        // Switch Water Effects, Extra Building Props and 3D Shadows off, and Enable Dynamic LOD for better performance.
-                //        Properties.Settings.Default.WaterEffects = false;
-                //        Properties.Settings.Default.ExtraBuildingProps = false;
-                //        try
-                //        {
-                //            File.WriteAllText(Globals.myDocPath + "Options.ini",
-                //                Regex.Replace(File.ReadAllText(Globals.myDocPath + "Options.ini"),
-                //                "\r?\nUseShadowVolumes = Yes",
-                //                "\r\nUseShadowVolumes = No",
-                //                RegexOptions.IgnoreCase));
-
-                //            File.WriteAllText(Globals.myDocPath + "Options.ini",
-                //                Regex.Replace(File.ReadAllText(Globals.myDocPath + "Options.ini"),
-                //                "\r?\nDynamicLOD = No",
-                //                "\r\nDynamicLOD = Yes",
-                //                RegexOptions.IgnoreCase));
-                //        }
-                //        catch { }
-                //    }
-                //}
 
                 // Delete old Contra config folders
                 DirectoryInfo di = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Contra");

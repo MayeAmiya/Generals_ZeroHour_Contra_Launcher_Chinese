@@ -37,7 +37,6 @@
     <Content Include="Resources\_bg_update.jpg" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="System.Management" Version="*" />
     <PackageReference Include="System.Resources.Extensions" Version="*" />
   </ItemGroup>
 </Project>
