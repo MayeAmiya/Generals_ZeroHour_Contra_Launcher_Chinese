@@ -2480,22 +2480,29 @@ namespace Contra
             }
 
             // The flag panel has no room for a sixth button, so Chinese is offered at startup instead.
-            // The prompt is bilingual so a player who has not picked Chinese can still read it, and a
-            // refusal is remembered so it is not asked again.
+            // A Chinese system switches on its own and is never asked; the bilingual prompt is only for
+            // everyone else, and a refusal is remembered so it is not asked again.
             if (!RadioFlag_CN.Checked && !Properties.Settings.Default.ChinesePromptDismissed)
             {
-                DialogResult switchToChinese = MessageBox.Show(
-                    new Form { TopMost = true },
-                    "Switch the launcher to Simplified Chinese?\n\n是否将启动器界面切换为简体中文?",
-                    "Language / 语言",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
-                if (switchToChinese == DialogResult.Yes)
+                if (GetCurrentCulture() == "zh-CN" || GetCurrentCulture() == "zh-Hans")
+                {
                     RadioFlag_CN.Checked = true;
+                }
                 else
                 {
-                    Properties.Settings.Default.ChinesePromptDismissed = true;
-                    Properties.Settings.Default.Save();
+                    DialogResult switchToChinese = MessageBox.Show(
+                        new Form { TopMost = true },
+                        "Switch the launcher to Simplified Chinese?\n\n是否将启动器界面切换为简体中文?",
+                        "Language / 语言",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+                    if (switchToChinese == DialogResult.Yes)
+                        RadioFlag_CN.Checked = true;
+                    else
+                    {
+                        Properties.Settings.Default.ChinesePromptDismissed = true;
+                        Properties.Settings.Default.Save();
+                    }
                 }
             }
 
