@@ -1992,40 +1992,15 @@ namespace Contra
         {
             try
             {
-                using (FileStream fs = File.Create(Globals.myDocPath + @"\Options.ini"))
+                string optionsPath = Globals.myDocPath + @"\Options.ini";
+                OptionsIniFile options = OptionsIniFile.Load(optionsPath);
+                if (options == null)
                 {
-                    byte[] info = new UTF8Encoding(true).GetBytes(
-                        "IdealStaticGameLOD = High" +
-                        Environment.NewLine +
-                        "Resolution = " + ScreenResolutionX + " " + ScreenResolutionY +
-                        Environment.NewLine +
-                        "BuildingOcclusion = Yes" +
-                        Environment.NewLine +
-                        "DynamicLOD = Yes" +
-                        Environment.NewLine +
-                        "ExtraAnimations = Yes" +
-                        Environment.NewLine +
-                        "HeatEffects = No" +
-                        Environment.NewLine +
-                        "ShowSoftWaterEdge = Yes" +
-                        Environment.NewLine +
-                        "ShowTrees = Yes" +
-                        Environment.NewLine +
-                        "StaticGameLOD = Custom" +
-                        Environment.NewLine +
-                        "MaxParticleCount = 2500" +
-                        Environment.NewLine +
-                        "TextureReduction = 0" +
-                        Environment.NewLine +
-                        "UseCloudMap = Yes" +
-                        Environment.NewLine +
-                        "UseLightMap = Yes" +
-                        Environment.NewLine +
-                        "UseShadowDecals = Yes" +
-                        Environment.NewLine +
-                        "UseShadowVolumes = Yes");
-                    fs.Write(info, 0, info.Length);
+                    return;
                 }
+
+                options.FillDefaults(ScreenResolutionX + " " + ScreenResolutionY);
+                options.Save(optionsPath);
             }
             catch { }
         }
@@ -2129,32 +2104,28 @@ namespace Contra
             {
                 CreateOptionsINI();
             }
-            // If Options.ini is present but any of the graphical entries are missing, delete the current Options.ini and generate a new one
+            // A present file that lacks entries is repaired in place instead of being deleted, so settings the user
+            // already chose survive. Only the missing keys are written back.
             else
             {
-                string OptionsText = File.ReadAllText(Globals.myDocPath + "Options.ini");
-                if (!OptionsText.Contains("StaticGameLOD") ||
-                    !OptionsText.Contains("UseShadowVolumes") ||
-                    !OptionsText.Contains("UseShadowDecals") ||
-                    !OptionsText.Contains("UseCloudMap") ||
-                    !OptionsText.Contains("UseLightMap") ||
-                    !OptionsText.Contains("ShowSoftWaterEdge") ||
-                    !OptionsText.Contains("BuildingOcclusion") ||
-                    !OptionsText.Contains("ShowTrees") ||
-                    !OptionsText.Contains("ExtraAnimations") ||
-                    !OptionsText.Contains("DynamicLOD") ||
-                    !OptionsText.Contains("HeatEffects"))
+                try
                 {
-                    try
+                    string optionsIniPath = Globals.myDocPath + "Options.ini";
+                    OptionsIniFile options = OptionsIniFile.Load(optionsIniPath);
+                    if (options != null && options.FillDefaults(ScreenResolutionX + " " + ScreenResolutionY) > 0)
                     {
-                        File.Delete(Globals.myDocPath + "Options.ini");
-                        CreateOptionsINI();
-                        File.SetAttributes(Globals.myDocPath + "Options.ini", FileAttributes.Normal);
-                        File.SetAttributes(Globals.myDocPath + "Options_CTR.ini", FileAttributes.Normal);
-                        File.Copy(Globals.myDocPath + "Options.ini", Globals.myDocPath + "Options_CTR.ini", true);
+                        options.Save(optionsIniPath);
+                        File.SetAttributes(optionsIniPath, FileAttributes.Normal);
+
+                        string ctrIniPath = Globals.myDocPath + "Options_CTR.ini";
+                        if (File.Exists(ctrIniPath))
+                        {
+                            File.SetAttributes(ctrIniPath, FileAttributes.Normal);
+                            File.Copy(optionsIniPath, ctrIniPath, true);
+                        }
                     }
-                    catch { }
                 }
+                catch { }
             }
 
             // Make 2 copies of Options.ini, name them Options_ZH.ini and Options_CTR.ini
