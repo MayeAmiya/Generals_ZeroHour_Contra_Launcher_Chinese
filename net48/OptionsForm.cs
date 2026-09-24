@@ -272,6 +272,10 @@ namespace Contra
             }
             //TextureResLabel.Text = Messages.GenerateMessage("TextureRes", Globals.currentLanguage);
 
+            // Match the option checkbox styling - in Chinese this is the post-sweep Microsoft YaHei size.
+            GoModeRadio.Font = FogCheckBox.Font;
+            GoUnlimitedRadio.Font = FogCheckBox.Font;
+
             // Load settings from Options.ini to display them in our Options form
             if (Directory.Exists(Globals.myDocPath))
             {
