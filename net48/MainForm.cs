@@ -1838,6 +1838,14 @@ namespace Contra
                 return;
             }
 
+            // Generals Online launches its own client executables; the vanilla generals.ctr swap
+            // below must never touch them.
+            if (Properties.Settings.Default.GoClientMode)
+            {
+                StartGeneralsOnline();
+                return;
+            }
+
             // Rename generals.exes
             if (File.Exists("generals.exe") && (File.Exists("generals.ctr")))
             {
@@ -1865,9 +1873,19 @@ namespace Contra
                     generals.EnableRaisingEvents = true;
                     generals.Exited += (sender1, e1) =>
                     {
+                        // GenTool may have written its own pitch/camera to d3d8.cfg while playing.
+                        OptionsForm.SyncStoredCameraFromFiles();
                         WindowState = FormWindowState.Normal;
                     };
                     generals.StartInfo.WorkingDirectory = Path.GetDirectoryName("generals.exe");
+
+                    // GenTool reads d3d8.cfg only while the game process is booting, so the chosen
+                    // camera pitch and zoom-out height must be refreshed right before launch;
+                    // otherwise the in-game view stays at the engine defaults (37.5 degrees).
+                    if (isGentoolInstalled("d3d8.dll"))
+                        OptionsForm.WriteD3D8Config(Properties.Settings.Default.GoCameraPitch,
+                            Properties.Settings.Default.GoCameraMaxHeight);
+
                     WindowState = FormWindowState.Minimized;
                     try
                     {
@@ -1893,6 +1911,185 @@ namespace Contra
             if (quickStart && !windowed) return "-quickstart -nologo";
             if (quickStart && windowed) return "-win -quickstart -nologo";
             return "-win";
+        }
+
+        /// <summary>
+        ///     Launch path for Generals Online. "Generals Online" alone starts the official client
+        ///     with the official launcher's exe choice (EAC wrapper when easyanticheat is selected,
+        ///     otherwise GeneralsOnlineZH_60.exe directly); adding "Unlimited" starts our modified
+        ///     GeneralsOnlineZH_Unlimited.exe with the anticheat plugin dropped, since EAC rejects
+        ///     modified executables. GO chains its processes, so the window restore follows the
+        ///     real client process rather than the process we started.
+        /// </summary>
+        private void StartGeneralsOnline()
+        {
+            bool unlimited = Properties.Settings.Default.GoUnlimitedCamera;
+
+            string fileName;
+            if (unlimited)
+            {
+                fileName = "GeneralsOnlineZH_Unlimited.exe";
+            }
+            else
+            {
+                fileName = OptionsForm.ReadGoAnticheat() == "easyanticheat"
+                    && File.Exists("EAC_LaunchGeneralsOnline.exe")
+                    ? "EAC_LaunchGeneralsOnline.exe"
+                    : "GeneralsOnlineZH_60.exe";
+            }
+
+            if (!File.Exists(fileName))
+            {
+                if (MessageBox.Show(Messages.GenerateMessage("E_NotFound_GOClient", Globals.currentLanguage),
+                        Messages.GenerateMessage("Error", Globals.currentLanguage),
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Error) == DialogResult.Yes)
+                    Url_open("https://generals.online/");
+                return;
+            }
+
+            if (wbRunningDialogResultYes() != true) return;
+
+            // Refresh the client config right before launch, exactly like StartGenerals refreshes
+            // the GenTool d3d8.cfg: the official client has no native camera support (zeroes keep
+            // its defaults), the unlimited build reads max_height/pitch itself.
+            if (unlimited)
+            {
+                OptionsForm.SetGoAnticheat("");
+                OptionsForm.WriteGoCameraSettings(Properties.Settings.Default.GoCameraMaxHeight,
+                    Properties.Settings.Default.GoCameraPitch);
+            }
+            else
+            {
+                OptionsForm.WriteGoCameraSettings(0, 0);
+            }
+
+            Process generals = new Process();
+            generals.StartInfo.FileName = fileName;
+            generals.StartInfo.Arguments = BuildGoArguments();
+            generals.StartInfo.WorkingDirectory = Path.GetDirectoryName("generals.exe");
+            generals.EnableRaisingEvents = true;
+
+            WindowState = FormWindowState.Minimized;
+            try
+            {
+                generals.Start();
+
+                if (fileName == "EAC_LaunchGeneralsOnline.exe")
+                {
+                    // The wrapper spawns the real client and exits almost immediately; follow the
+                    // client process instead (12s success threshold, same as GLGO's process family
+                    // tracking).
+                    StartGoClientWatch();
+                }
+                else
+                {
+                    generals.Exited += (sender1, e1) =>
+                    {
+                        // The GO client may have saved a new PageUp/PageDown pitch on exit;
+                        // re-read settings.json/d3d8.cfg so the sliders never show stale values.
+                        OptionsForm.SyncStoredCameraFromFiles();
+                        WindowState = FormWindowState.Normal;
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error");
+                WindowState = FormWindowState.Normal;
+            }
+        }
+
+        /// <summary>
+        ///     GO client arguments: Contra's INI overrides conflict with the GO community data
+        ///     patch, so that patch is always disabled for this launch; windowed mode adds -win and
+        ///     the selected resolution, mirroring the official launcher's arguments.
+        /// </summary>
+        private string BuildGoArguments()
+        {
+            string args = "-disableCommunityDataPatch";
+
+            if (WinCheckBox.Checked)
+            {
+                string[] parts = (Properties.Settings.Default.Res ?? "")
+                    .Split(new[] { ' ', 'x', '*' }, StringSplitOptions.RemoveEmptyEntries);
+                int x, y;
+                if (parts.Length == 2 && int.TryParse(parts[0], out x) && int.TryParse(parts[1], out y))
+                {
+                    args += " -win -xres " + x + " -yres " + y;
+                }
+                else
+                {
+                    args += " -win -xres " + Screen.PrimaryScreen.Bounds.Width
+                          + " -yres " + Screen.PrimaryScreen.Bounds.Height;
+                }
+            }
+
+            return args;
+        }
+
+        /// <summary>
+        ///     The client process a chained (EAC wrapper) launch ends up running.
+        /// </summary>
+        private static Process FindGoClientProcess()
+        {
+            foreach (string name in new[] { "GeneralsOnlineZH_Unlimited", "GeneralsOnlineZH_60", "GeneralsOnlineZH" })
+            {
+                Process[] candidates = Process.GetProcessesByName(name);
+                if (candidates.Length > 0) return candidates[0];
+            }
+            return null;
+        }
+
+        /// <summary>
+        ///     Timer-based process family watch for chained GO launches: wait up to 12 seconds (the
+        ///     success threshold GLGO uses) for the real client process to appear, then keep the
+        ///     launcher minimized until that process exits.
+        /// </summary>
+        private System.Windows.Forms.Timer goClientWatch;
+
+        private void StartGoClientWatch()
+        {
+            if (goClientWatch != null)
+            {
+                goClientWatch.Stop();
+                goClientWatch.Dispose();
+            }
+
+            goClientWatch = new System.Windows.Forms.Timer { Interval = 500 };
+            int waited = 0;
+            Process client = null;
+
+            goClientWatch.Tick += (sender, e) =>
+            {
+                waited += goClientWatch.Interval;
+
+                if (client == null)
+                {
+                    client = FindGoClientProcess();
+                    if (client == null && waited >= 12000)
+                    {
+                        // Wrapper exited without a client appearing: treat the launch as failed.
+                        goClientWatch.Stop();
+                        WindowState = FormWindowState.Normal;
+                    }
+                }
+                else
+                {
+                    try
+                    {
+                        if (client.HasExited)
+                        {
+                            // The GO client may have saved a new PageUp/PageDown pitch on exit.
+                            OptionsForm.SyncStoredCameraFromFiles();
+                            goClientWatch.Stop();
+                            WindowState = FormWindowState.Normal;
+                        }
+                    }
+                    catch { /* the process object can die between calls; next tick retries */ }
+                }
+            };
+
+            goClientWatch.Start();
         }
 
         internal static bool Url_open(string url)
@@ -2305,6 +2502,10 @@ namespace Contra
                 }
                 catch { }
             }
+
+            // Generate the GO client's settings.json (and its GeneralsOnlineData folder) when
+            // missing, so a fresh machine starts with a valid client-defaults file too.
+            OptionsForm.EnsureGoSettingsJson();
 
             // Make 2 copies of Options.ini, name them Options_ZH.ini and Options_CTR.ini
             if (File.Exists(Globals.myDocPath + "Options.ini") && !File.Exists(Globals.myDocPath + "Options_ZH.ini") && !File.Exists(Globals.myDocPath + "Options_CTR.ini"))

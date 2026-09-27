@@ -354,6 +354,14 @@ namespace Contra
                 "Im aktuellen Verzeichnis fehlen Basisspieldateien. Bitte installieren Sie den Mod im Hauptordner des Spiels (C&C Generals Zero Hour)!\n\nMöchten Sie eine Seite mit Installationsanweisungen besuchen?",
                 "当前目录中缺少游戏本体文件 —— 请将 mod 安装到游戏主目录(C&C 绝命时刻)!\n\n是否前往查看安装说明页面?"),
             
+            ["E_NotFound_GOClient"] = lang => ChooseByLanguage(lang,
+                "The Generals Online client was not found in the game folder!\n\nPlease install Generals Online into the Zero Hour directory first, or uncheck \"Generals Online\" in the launcher options to start vanilla Contra.\n\nWould you like to visit generals.online?",
+                "Клиент Generals Online не найден в папке игры!\n\nСначала установите Generals Online в папку Zero Hour, или снимите флажок \"Generals Online\" в настройках лаунчера, чтобы запустить обычный Contra.\n\nХотите посетить generals.online?",
+                "Клієнт Generals Online не знайдено в папці гри!\n\nСпочатку встановіть Generals Online до папки Zero Hour, або зніміть прапорець \"Generals Online\" у налаштуваннях лаунчера, щоб запустити звичайний Contra.\n\nБажаєте відвідати generals.online?",
+                "Клиентът на Generals Online не е намерен в папката на играта!\n\nПърво инсталирайте Generals Online в папката на Zero Hour, или премахнете отметката \"Generals Online\" в настройките на лаунчера, за да стартирате обикновения Contra.\n\nИскате ли да посетите generals.online?",
+                "Der Generals-Online-Client wurde im Spielordner nicht gefunden!\n\nBitte installieren Sie Generals Online zuerst in den Zero-Hour-Ordner oder deaktivieren Sie \"Generals Online\" in den Launcher-Optionen, um normales Contra zu starten.\n\nMöchten Sie generals.online besuchen?",
+                "在游戏目录中未找到 Generals Online 客户端!\n\n请先将 Generals Online 安装到绝命时刻目录,或在启动器选项中取消勾选\"在线版将军\"以启动原版 Contra。\n\n是否前往 generals.online?"),
+
             ["E_NotFound_GeneralsEXE"] = lang => ChooseByLanguage(lang, 
                 "The \"generals.exe\" file was not found. Make sure you have Zero Hour installed, and Contra is installed into Zero Hour's main folder!\n\nWould you like to visit a page with installation instructions?",
                 "Файл \"generals.exe\" не найден. Убедитесь, что у вас установлена Zero Hour, а Contra установлен в основную папку Zero Hour!\n\nХотите посетить страницу с инструкциями по установке?",
