@@ -71,6 +71,7 @@ namespace Contra
         private class RemoteEntry
         {
             public string Url;
+            public string Category;     // R2 folder name (ContraLauncher_New / ContraXBeta2Patch1 / ...)
             public string RelativePath; // path below the launcher directory
         }
 
@@ -94,15 +95,14 @@ namespace Contra
             if (notClean == null)
                 return true; // clean folder: the bootstrap will run in RunAsync
 
-            // This popup fires BEFORE the launcher language is decided (the gate runs
-            // first), so it follows the SYSTEM language, not the launcher language.
-            bool chineseSystem = IsChineseSystemLanguage();
+            // The launcher language is decided before this gate runs (detection happens
+            // first on a first launch), so the notice simply follows it.
             MessageBox.Show(new Form { TopMost = true },
-                chineseSystem
-                    ? "首次安装要求启动器位于干净（空）的文件夹中。\n当前文件夹包含： " + notClean + "\n\n" +
-                      "请将 Contra_Launcher_New.exe 移入空文件夹后重新运行。\n已安装的目录（含 Contra_Installed.marker）会自动进入检查修复模式。"
-                    : "First install requires the launcher to sit in a clean (empty) folder.\nThis folder contains: " + notClean + "\n\n" +
-                      "Move Contra_Launcher_New.exe into an empty folder and run again.\nInstalled folders (with Contra_Installed.marker) switch to check/repair mode automatically.",
+                L("首次安装要求启动器位于干净（空）的文件夹中。\n当前文件夹包含： ",
+                  "First install requires the launcher to sit in a clean (empty) folder.\nThis folder contains: ")
+                + notClean + "\n\n" +
+                L("请将 Contra_Launcher_New.exe 移入空文件夹后重新运行。\n已安装的目录（含 Contra_Installed.marker）会自动进入检查修复模式。",
+                  "Move Contra_Launcher_New.exe into an empty folder and run again.\nInstalled folders (with Contra_Installed.marker) switch to check/repair mode automatically."),
                 "Contra Launcher", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             Application.Exit();
             return false;
@@ -132,12 +132,163 @@ namespace Contra
                 zhInstalls = SortSteamsFirst(zhInstalls);
                 generalsInstalls = SortSteamsFirst(generalsInstalls);
 
+                // Phase 0: LAUNCHER self-update — direct hash comparison against the
+                // ContraLauncher_New group on the index, no version file involved. If the
+                // remote launcher differs from the running one it is downloaded, swapped in
+                // and the launcher restarts immediately; the rest of the pass runs on the
+                // next start with the new build.
+                List<RemoteEntry> remoteAll = await LoadRemoteIndex();
+                List<RemoteEntry> launcherUpdates = new List<RemoteEntry>();
+                List<RemoteEntry> remote = new List<RemoteEntry>();
+                foreach (RemoteEntry entry in remoteAll)
+                {
+                    bool isLauncherExe = entry.Category == "ContraLauncher_New"
+                        && entry.RelativePath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
+                    if (isLauncherExe)
+                        launcherUpdates.Add(entry);
+                    else
+                        remote.Add(entry);
+                }
+
+                if (launcherUpdates.Count > 0)
+                {
+                    // Work out which launcher files differ (size, and MD5 when the R2 ETag
+                    // carries one - single-part R2 uploads put their MD5 in the ETag).
+                    var launcherDownloads = new List<KeyValuePair<RemoteEntry, long>>();
+                    foreach (RemoteEntry entry in launcherUpdates)
+                    {
+                        string target = Path.Combine(baseDir, entry.RelativePath.Replace('/', '\\'));
+                        if (!File.Exists(target))
+                        {
+                            launcherDownloads.Add(new KeyValuePair<RemoteEntry, long>(entry, 0));
+                            continue;
+                        }
+
+                        string[] head = await HeadRemote(entry.Url);
+                        if (head == null)
+                            continue; // unreachable right now; keep the local launcher
+
+                        long remoteSize = 0;
+                        long.TryParse(head[1], out remoteSize);
+                        FileInfo local = new FileInfo(target);
+
+                        if (local.Length != remoteSize)
+                        {
+                            launcherDownloads.Add(new KeyValuePair<RemoteEntry, long>(entry, remoteSize));
+                            continue;
+                        }
+
+                        string etag = head[0].Trim('"');
+                        bool etagIsMd5 = etag.Length == 32 && etag.All(Uri.IsHexDigit);
+                        if (etagIsMd5 && !MainForm.CalculateMD5(target).Equals(etag, StringComparison.OrdinalIgnoreCase))
+                            launcherDownloads.Add(new KeyValuePair<RemoteEntry, long>(entry, remoteSize));
+                        // same size and same MD5 (or unverifiable): up to date
+                    }
+
+                    if (launcherDownloads.Count > 0)
+                    {
+                        long launcherBytes = 0;
+                        foreach (KeyValuePair<RemoteEntry, long> download in launcherDownloads)
+                            launcherBytes += download.Value;
+
+                        FileRepairProgressForm launcherProgress = new FileRepairProgressForm(launcherDownloads.Count);
+                        launcherProgress.Show(owner);
+                        owner.Enabled = false;
+                        launcherProgress.FormClosed += (sender, args) => owner.Enabled = true;
+
+                        try
+                        {
+                            launcherProgress.SetPhase(L("正在更新启动器", "Updating the launcher"));
+                            long overallReceived = 0;
+                            Stopwatch sessionWatch = Stopwatch.StartNew();
+                            double lastCallbackSeconds = 0;
+                            long lastCallbackBytes = 0;
+                            double smoothedSpeed = 0;
+                            int launcherDone = 0;
+
+                            foreach (KeyValuePair<RemoteEntry, long> download in launcherDownloads)
+                            {
+                                if (launcherProgress.Cancellation.IsCancellationRequested)
+                                    break;
+
+                                RemoteEntry entry = download.Key;
+                                string target = Path.Combine(baseDir, entry.RelativePath.Replace('/', '\\'));
+                                string updateTemp = target + ".update";
+
+                                try
+                                {
+                                    launcherProgress.SetFile(entry.RelativePath, 0);
+                                    launcherProgress.ClearStats();
+
+                                    long fileStartOverall = overallReceived;
+                                    Stopwatch fileWatch = Stopwatch.StartNew();
+                                    await owner.DownloadFile(entry.Url, updateTemp, TimeSpan.FromMinutes(30),
+                                        launcherProgress.Cancellation.Token, (received, total) =>
+                                        {
+                                            overallReceived = fileStartOverall + received;
+
+                                            int percent = total > 0 ? (int)Math.Min(100, received * 100 / total) : 0;
+                                            launcherProgress.SetFile(entry.RelativePath, percent);
+
+                                            double elapsed = sessionWatch.Elapsed.TotalSeconds;
+                                            double dt = elapsed - lastCallbackSeconds;
+                                            long dBytes = overallReceived - lastCallbackBytes;
+                                            if (dt > 0.05 && dBytes > 0)
+                                            {
+                                                double instant = dBytes / dt;
+                                                smoothedSpeed = smoothedSpeed <= 0 ? instant : smoothedSpeed * 0.7 + instant * 0.3;
+                                                lastCallbackSeconds = elapsed;
+                                                lastCallbackBytes = overallReceived;
+                                            }
+
+                                            string eta = smoothedSpeed > 1 ? FormatDuration((total - received) / smoothedSpeed) : "--:--";
+                                            launcherProgress.SetStats(received, total, smoothedSpeed, eta);
+
+                                            long overallRemaining = Math.Max(0, launcherBytes - overallReceived);
+                                            launcherProgress.SetOverallStats(overallReceived, launcherBytes, smoothedSpeed,
+                                                smoothedSpeed > 1 ? FormatDuration(overallRemaining / smoothedSpeed) : "--:--");
+                                        });
+
+                                    SwapLauncherFile(updateTemp, target, repaired, failed);
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                    try { if (File.Exists(updateTemp)) File.Delete(updateTemp); } catch { }
+                                    break;
+                                }
+                                catch (Exception ex)
+                                {
+                                    failed.Add(new RepairResult { Path = entry.RelativePath, Error = ex.Message });
+                                }
+                                finally
+                                {
+                                    launcherDone++;
+                                    launcherProgress.SetOverall(launcherDone);
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            launcherProgress.Close();
+                            launcherProgress.Dispose();
+                        }
+
+                        // The launcher binary changed: restart into it right away. The rest
+                        // of the sync runs on the next start with the new build.
+                        if (repaired.Count > 0 && failed.Count == 0)
+                        {
+                            WriteMarkerIfNew(baseDir);
+                            Application.Restart();
+                            return;
+                        }
+                    }
+                }
+
                 // Phase 1: base-game content from the local installs. These are hard links /
                 // copies and finish instantly - no progress UI, no counters for them.
                 RestoreBaseGame(baseDir, zhInstalls, generalsInstalls, repaired, failed);
 
                 // Phase 2a: check the R2 index and work out exactly what has to download.
-                List<RemoteEntry> remote = await LoadRemoteIndex();
                 var downloads = new List<KeyValuePair<RemoteEntry, long>>();
                 foreach (RemoteEntry entry in remote)
                 {
@@ -317,6 +468,37 @@ namespace Contra
             {
                 try { File.WriteAllText(Path.Combine(baseDir, MarkerFileName), DateTime.Now.ToString("s")); }
                 catch { }
+            }
+        }
+
+        /// <summary>
+        ///     Places a freshly downloaded launcher file: when the target is the running exe
+        ///     it is renamed aside (Windows allows renaming a running executable) and the new
+        ///     binary takes its place; any other target is simply overwritten.
+        /// </summary>
+        private static void SwapLauncherFile(string updateTemp, string target,
+            List<RepairResult> repaired, List<RepairResult> failed)
+        {
+            try
+            {
+                string running = Path.GetFullPath(Application.ExecutablePath);
+                if (string.Equals(Path.GetFullPath(target), running, StringComparison.OrdinalIgnoreCase))
+                {
+                    string toDelete = Path.Combine(Path.GetDirectoryName(target), "Contra_Launcher_New_ToDelete.exe");
+                    try { if (File.Exists(toDelete)) File.Delete(toDelete); } catch { }
+                    File.Move(running, toDelete);
+                }
+                else if (File.Exists(target))
+                {
+                    File.Delete(target);
+                }
+
+                File.Move(updateTemp, target);
+                repaired.Add(new RepairResult { Path = Path.GetFileName(target) + " (launcher updated)" });
+            }
+            catch (Exception ex)
+            {
+                failed.Add(new RepairResult { Path = Path.GetFileName(target), Error = ex.Message });
             }
         }
 
@@ -556,10 +738,14 @@ namespace Contra
                 if (relative.Length == 0)
                     continue;
 
-                if (folder != "GeneralsOnlineUnlimited" && folder != "ContraXBeta2Patch1" && folder != "GenTool_v8.9")
+                if (folder != "GeneralsOnlineUnlimited" && folder != "ContraXBeta2Patch1"
+                    && folder != "GenTool_v8.9" && folder != "ContraLauncher_New")
                     continue; // unknown category; ignored until it is part of the layout
 
-                entries.Add(new RemoteEntry { Url = url, RelativePath = relative });
+                if (relative.Equals("index.html", StringComparison.OrdinalIgnoreCase))
+                    continue; // a copy of the index inside a folder is not content
+
+                entries.Add(new RemoteEntry { Url = url, Category = folder, RelativePath = relative });
             }
 
             return entries;

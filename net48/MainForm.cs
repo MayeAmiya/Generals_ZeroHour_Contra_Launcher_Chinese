@@ -301,7 +301,9 @@ namespace Contra
         // channel. Self-update downloads Contra_Launcher.zip from our own S3 bucket (see
         // S3_BaseUrl) and is dormant until that bucket is configured; the exit-time exe-swap
         // cleanup below is gated on the same flag.
-        internal const bool EnableSelfUpdate = true;
+        // Self-update now works by direct hash comparison against the ContraLauncher_New
+        // group on the index (see FileRepair phase 0) - the Versions_X.txt flow is retired.
+        internal const bool EnableSelfUpdate = false;
 
         // TheSuperHackers @bugfix In single-file published builds Assembly.Location returns an
         // empty string and Path.GetDirectoryName("") returns null, which made every
@@ -2737,22 +2739,17 @@ namespace Contra
 
         private async void Form1_Shown(object sender, EventArgs e)
         {
-            // Startup order per spec: clean-folder gate first, then the self-update (which
-            // may restart the launcher under the renamed exe), then runtime libraries and
-            // the manifest-driven install repair.
-            if (!FileRepair.EnsureCleanFolder())
-                return;
-
-            // One-time behaviours (language auto-detection) run only before the install
-            // marker exists; established installs always follow the user's saved choice.
-            bool firstLaunch = !FileRepair.MarkerExists();
-
             // Language comes FIRST (user spec): on the very first launch a CHINESE system
-            // is switched to Chinese immediately - before the self-update and everything
-            // else - so the whole bootstrap runs in Chinese. An English (non-Chinese)
-            // system already sits on the English default, so nothing is switched.
+            // is switched to Chinese immediately, so the clean-folder notice and every
+            // later message already speak the user's language. An English (non-Chinese)
+            // system already sits on the English default - nothing to switch.
+            bool firstLaunch = !FileRepair.MarkerExists();
             if (firstLaunch && IsChineseSystemLanguage())
                 RadioFlag_CN.Checked = true;
+
+            // Clean-folder gate, now speaking the decided language.
+            if (!FileRepair.EnsureCleanFolder())
+                return;
 
             // Temporary hack so update runs on main thread, versionsTXT should be rewritten to be async if possible
             // TheSuperHackers @feature Auto-update is back, served from our own S3 channel
