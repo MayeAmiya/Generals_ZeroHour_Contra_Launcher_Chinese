@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -98,8 +99,10 @@ namespace Contra
         }
 
         /// <summary>
-        ///     Runs the whole bootstrap/repair pass. Silent when everything is present and
-        ///     current; a top-most summary dialog lists restored files and failures.
+        ///     Runs the whole bootstrap/repair pass. Local restores happen silently (they are
+        ///     hard links / copies and finish instantly); the progress window only appears
+        ///     when files actually have to download, and its total counts exactly the files
+        ///     that need downloading - computed upfront by the check pass, nothing else.
         ///     Never throws: repair is a convenience and must not block launcher startup.
         /// </summary>
         public static async Task RunAsync(MainForm owner)
@@ -107,48 +110,74 @@ namespace Contra
             List<RepairResult> repaired = new List<RepairResult>();
             List<RepairResult> failed = new List<RepairResult>();
             string baseDir = MainForm.ResolveLauncherExecutingPath();
+            bool cancelled = false;
 
             try
             {
                 List<string> zhInstalls = InstallLocator.FindZeroHourInstalls();
                 List<string> generalsInstalls = InstallLocator.FindGeneralsInstalls();
 
-                int totalFiles = BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length;
-                FileRepairProgressForm progress = new FileRepairProgressForm(totalFiles);
+                // Steam depots are the preferred restore source (complete, Steam-verified
+                // layouts); retail installs come after them.
+                zhInstalls = SortSteamsFirst(zhInstalls);
+                generalsInstalls = SortSteamsFirst(generalsInstalls);
+
+                // Phase 1: base-game content from the local installs. These are hard links /
+                // copies and finish instantly - no progress UI, no counters for them.
+                RestoreZhGenerals(baseDir, generalsInstalls, repaired, failed);
+                RestoreFromInstalls(baseDir, BuiltinFileLists.ZeroHourFiles, zhInstalls, "Zero Hour", repaired, failed);
+                RestoreSteamExtras(baseDir, zhInstalls, repaired, failed);
+
+                // Phase 2a: check the R2 index and work out exactly what has to download.
+                List<RemoteEntry> remote = await LoadRemoteIndex();
+                var downloads = new List<KeyValuePair<RemoteEntry, long>>();
+                foreach (RemoteEntry entry in remote)
+                {
+                    string target = Path.Combine(baseDir, entry.RelativePath.Replace('/', '\\'));
+
+                    // Mod files toggle between .ctr (inactive) and .big (activated by the
+                    // option renames on every launch), so presence is matched on the file
+                    // NAME with either extension - matching the exact .ctr name only would
+                    // re-download every activated file on each start.
+                    if (File.Exists(target) || File.Exists(AlternateCtrBigPath(target)))
+                        continue;
+
+                    string[] head = await HeadRemote(entry.Url);
+                    downloads.Add(new KeyValuePair<RemoteEntry, long>(entry, head != null ? long.Parse(head[1]) : 0));
+                }
+
+                if (downloads.Count == 0)
+                {
+                    WriteMarkerIfNew(baseDir);
+
+                    // Only local restores happened, but the directory still changed.
+                    if (repaired.Count > 0 && failed.Count == 0)
+                        Application.Restart();
+                    return;
+                }
+
+                // Phase 2b: download exactly the missing files. Progress window on top, main
+                // form disabled until the pass is done. The total counts downloads only.
+                long totalBytes = 0;
+                foreach (KeyValuePair<RemoteEntry, long> download in downloads)
+                    totalBytes += download.Value;
+
+                FileRepairProgressForm progress = new FileRepairProgressForm(downloads.Count);
                 progress.Show(owner);
+                owner.Enabled = false;
+                progress.FormClosed += (sender, args) => owner.Enabled = true;
 
                 try
                 {
+                    progress.SetPhase(L("正在下载", "Downloading"));
+                    long overallReceived = 0;
+                    Stopwatch sessionWatch = Stopwatch.StartNew();
+                    double lastCallbackSeconds = 0;
+                    long lastCallbackBytes = 0;
+                    double smoothedSpeed = 0;
                     int done = 0;
 
-                    // Phase 1a: base Generals content into the ZH_Generals subfolder. Steam
-                    // installs are mapped with a single directory junction; other installs
-                    // get the folder created and per-file hard links / copies.
-                    progress.SetPhase("正在从本机安装恢复将军原版文件 / restoring base Generals files");
-                    RestoreZhGenerals(baseDir, generalsInstalls, progress, repaired, failed, ref done);
-
-                    // Phase 1b: Zero Hour content straight into the launcher directory.
-                    progress.SetPhase("正在从本机安装恢复绝命时刻文件 / restoring Zero Hour files");
-                    RestoreFromInstalls(baseDir, BuiltinFileLists.ZeroHourFiles, zhInstalls, "Zero Hour",
-                        progress, repaired, failed, ref done);
-
-                    // Steam installs additionally provide the DRM stubs the game needs:
-                    // map steam_api.dll / steam_appid.txt into the launcher directory too.
-                    RestoreSteamExtras(baseDir, zhInstalls, repaired, failed);
-
-                    // Phase 2: online content (engine, mod, GenTool) from the R2 index.
-                    // Existence-only ("只查少"): a missing file is downloaded once; present
-                    // files are never re-verified or re-fetched, and extra local files are
-                    // nobody's business. Network permitting; otherwise reported as failures.
-                    List<RemoteEntry> remote = await LoadRemoteIndex();
-                    progress.SetTotal(totalFiles + remote.Count);
-                    progress.SetPhase(L("正在同步在线文件", "Syncing online files"));
-
-                    long totalBytes = 0, overallReceived = 0;
-                    Stopwatch sessionWatch = Stopwatch.StartNew();
-                    bool cancelled = false;
-
-                    foreach (RemoteEntry entry in remote)
+                    foreach (KeyValuePair<RemoteEntry, long> download in downloads)
                     {
                         if (progress.Cancellation.IsCancellationRequested)
                         {
@@ -156,28 +185,17 @@ namespace Contra
                             break;
                         }
 
+                        RemoteEntry entry = download.Key;
                         string target = Path.Combine(baseDir, entry.RelativePath.Replace('/', '\\'));
+                        long fileStartOverall = overallReceived;
+
                         try
                         {
                             progress.SetFile(entry.RelativePath, 0);
                             progress.ClearStats();
 
-                            // Mod files toggle between .ctr (inactive) and .big (activated by
-                            // the option renames on every launch), so presence is matched on
-                            // the file NAME with either extension - matching the exact .ctr
-                            // name only would re-download every activated file on each start.
-                            if (File.Exists(target) || File.Exists(AlternateCtrBigPath(target)))
-                                continue; // present: existence-only, skip entirely
-
                             Directory.CreateDirectory(Path.GetDirectoryName(target));
 
-                            // Size for the overall ETA; the download itself follows.
-                            string[] head = await HeadRemote(entry.Url);
-                            long fileSize = head != null ? long.Parse(head[1]) : 0;
-                            totalBytes += fileSize;
-
-                            long fileStartOverall = overallReceived;
-                            Stopwatch fileWatch = Stopwatch.StartNew();
                             await owner.DownloadFile(entry.Url, target, TimeSpan.FromMinutes(30),
                                 progress.Cancellation.Token, (received, total) =>
                                 {
@@ -186,19 +204,25 @@ namespace Contra
                                     int percent = total > 0 ? (int)Math.Min(100, received * 100 / total) : 0;
                                     progress.SetFile(entry.RelativePath, percent);
 
-                                    // Per-file speed and remaining time, averaged over the whole
-                                    // file so far so the readout stays stable.
-                                    double fileElapsed = fileWatch.Elapsed.TotalSeconds;
-                                    double fileSpeed = fileElapsed > 0.3 ? received / fileElapsed : 0;
-                                    long fileRemaining = Math.Max(0, total - received);
-                                    progress.SetStats(received, total, fileSpeed,
-                                        fileSpeed > 1 ? FormatDuration(fileRemaining / fileSpeed) : "--:--");
-
+                                    // ONE shared session speed drives both rows (per-file ETA and
+                                    // overall ETA), smoothed so the two readouts always agree.
                                     double elapsed = sessionWatch.Elapsed.TotalSeconds;
-                                    double speed = elapsed > 0.5 ? overallReceived / elapsed : 0;
-                                    long remaining = Math.Max(0, totalBytes - overallReceived);
-                                    progress.SetOverallStats(overallReceived, totalBytes, speed,
-                                        speed > 1 ? FormatDuration(remaining / speed) : "--:--");
+                                    double dt = elapsed - lastCallbackSeconds;
+                                    long dBytes = overallReceived - lastCallbackBytes;
+                                    if (dt > 0.05 && dBytes > 0)
+                                    {
+                                        double instant = dBytes / dt;
+                                        smoothedSpeed = smoothedSpeed <= 0 ? instant : smoothedSpeed * 0.7 + instant * 0.3;
+                                        lastCallbackSeconds = elapsed;
+                                        lastCallbackBytes = overallReceived;
+                                    }
+
+                                    string eta = smoothedSpeed > 1 ? FormatDuration((total - received) / smoothedSpeed) : "--:--";
+                                    progress.SetStats(received, total, smoothedSpeed, eta);
+
+                                    long overallRemaining = Math.Max(0, totalBytes - overallReceived);
+                                    progress.SetOverallStats(overallReceived, totalBytes, smoothedSpeed,
+                                        smoothedSpeed > 1 ? FormatDuration(overallRemaining / smoothedSpeed) : "--:--");
                                 });
 
                             repaired.Add(new RepairResult { Path = entry.RelativePath });
@@ -226,33 +250,26 @@ namespace Contra
                     {
                         progress.ClearOverallStats();
                         progress.SetFile("", 100);
+                    }
 
-                        // The marker is written after the very first pass no matter what: even
-                        // with failures the folder is now launcher-managed and every later start
-                        // runs in check/repair mode instead of hitting the clean-folder gate.
-                        if (!File.Exists(Path.Combine(baseDir, MarkerFileName)))
-                        {
-                            try { File.WriteAllText(Path.Combine(baseDir, MarkerFileName), DateTime.Now.ToString("s")); }
-                            catch { }
-                        }
+                    // The marker is written after the very first pass no matter what: even
+                    // with failures or a cancellation the folder is now launcher-managed and
+                    // every later start runs in check/repair mode.
+                    WriteMarkerIfNew(baseDir);
 
-                        // The sync changed the directory: restart the launcher right away so
-                        // every piece of UI re-reads the freshly restored files - no user
-                        // interaction in between. (A restart without repairs would loop.)
-                        if (repaired.Count > 0 && failed.Count == 0)
-                        {
-                            Application.Restart();
-                            return;
-                        }
+                    // The sync changed the directory: restart the launcher right away so every
+                    // piece of UI re-reads the freshly restored files. Failures keep the
+                    // launcher open for the report instead (avoids failure-restart loops).
+                    if (!cancelled && repaired.Count > 0 && failed.Count == 0)
+                    {
+                        Application.Restart();
+                        return;
                     }
                 }
                 finally
                 {
-                    if (!progress.AutoClosing)
-                    {
-                        progress.Close();
-                        progress.Dispose();
-                    }
+                    progress.Close();
+                    progress.Dispose();
                 }
             }
             catch
@@ -262,6 +279,24 @@ namespace Contra
 
             if (failed.Count > 0)
                 ShowFailures(failed);
+        }
+
+        /// <summary>Orders install candidates Steam-first (steamapps paths), keeping the rest.</summary>
+        private static List<string> SortSteamsFirst(List<string> installs)
+        {
+            return installs
+                .OrderByDescending(install => IsSteamInstall(install))
+                .ToList();
+        }
+
+        /// <summary>Writes the install marker when it is not there yet (idempotent).</summary>
+        private static void WriteMarkerIfNew(string baseDir)
+        {
+            if (!File.Exists(Path.Combine(baseDir, MarkerFileName)))
+            {
+                try { File.WriteAllText(Path.Combine(baseDir, MarkerFileName), DateTime.Now.ToString("s")); }
+                catch { }
+            }
         }
 
         private static string FormatDuration(double seconds)
@@ -386,7 +421,7 @@ namespace Contra
             return false;
         }
         private static void RestoreZhGenerals(string baseDir, List<string> installs,
-            FileRepairProgressForm progress, List<RepairResult> repaired, List<RepairResult> failed, ref int done)
+            List<RepairResult> repaired, List<RepairResult> failed)
         {
             string targetBase = Path.Combine(baseDir, "ZH_Generals");
 
@@ -404,8 +439,6 @@ namespace Contra
                         {
                             Path = "ZH_Generals -> " + install + " (junction)"
                         });
-                        done++;
-                        progress.SetOverall(done);
                         return; // everything below the junction exists now
                     }
                 }
@@ -419,32 +452,19 @@ namespace Contra
             {
                 try
                 {
-                    progress.SetFile("ZH_Generals\\" + relativePath, 0);
-
                     string target = Path.Combine(targetBase, relativePath.Replace('/', '\\'));
                     if (File.Exists(target) || LanguageVariantPresent(targetBase, Path.GetFileName(target)))
-                    {
-                        done++;
-                        progress.SetFile("ZH_Generals\\" + relativePath, 100);
-                        progress.SetOverall(done);
                         continue;
-                    }
 
                     string error;
                     if (TryRestoreFromInstalls(relativePath, target, installs, "Generals", out error))
                         repaired.Add(new RepairResult { Path = "ZH_Generals\\" + relativePath });
                     else
                         failed.Add(new RepairResult { Path = "ZH_Generals\\" + relativePath, Error = error });
-
-                    done++;
-                    progress.SetFile("ZH_Generals\\" + relativePath, 100);
-                    progress.SetOverall(done);
                 }
                 catch (Exception ex)
                 {
                     failed.Add(new RepairResult { Path = "ZH_Generals\\" + relativePath, Error = ex.Message });
-                    done++;
-                    progress.SetOverall(done);
                 }
             }
         }
@@ -539,39 +559,25 @@ namespace Contra
         }
 
         private static void RestoreFromInstalls(string baseDir, string[] files, List<string> installs,
-            string gameName, FileRepairProgressForm progress, List<RepairResult> repaired,
-            List<RepairResult> failed, ref int done)
+            string gameName, List<RepairResult> repaired, List<RepairResult> failed)
         {
             foreach (string relativePath in files)
             {
                 try
                 {
-                    progress.SetFile(relativePath, 0);
-
                     string target = Path.Combine(baseDir, relativePath.Replace('/', '\\'));
                     if (File.Exists(target) || LanguageVariantPresent(baseDir, Path.GetFileName(target)))
-                    {
-                        done++;
-                        progress.SetFile(relativePath, 100);
-                        progress.SetOverall(done);
                         continue;
-                    }
 
                     string error;
                     if (TryRestoreFromInstalls(relativePath, target, installs, gameName, out error))
                         repaired.Add(new RepairResult { Path = relativePath });
                     else
                         failed.Add(new RepairResult { Path = relativePath, Error = error });
-
-                    done++;
-                    progress.SetFile(relativePath, 100);
-                    progress.SetOverall(done);
                 }
                 catch (Exception ex)
                 {
                     failed.Add(new RepairResult { Path = relativePath, Error = ex.Message });
-                    done++;
-                    progress.SetOverall(done);
                 }
             }
         }
