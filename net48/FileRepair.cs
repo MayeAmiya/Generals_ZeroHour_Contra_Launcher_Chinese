@@ -142,7 +142,8 @@ namespace Contra
 
         /// <summary>
         ///     Returns the first file/subdirectory in the launcher folder that does not belong
-        ///     to the launcher itself, or null when the folder is clean (empty).
+        ///     to the launcher itself, or null when the folder is clean (empty). runtime_lib\
+        ///     (locally bundled runtime installers) is allowed alongside the launcher.
         /// </summary>
         private static string FindFirstForeignItem(string baseDir)
         {
@@ -159,7 +160,8 @@ namespace Contra
             }
 
             foreach (string dir in Directory.GetDirectories(baseDir))
-                return Path.GetFileName(dir) + @"\";
+                if (!string.Equals(Path.GetFileName(dir), "runtime_lib", StringComparison.OrdinalIgnoreCase))
+                    return Path.GetFileName(dir) + @"\";
 
             return null;
         }

@@ -126,6 +126,75 @@ namespace Contra
             ApplyDpiCompatForGameExes();
         }
 
+        // Official Microsoft distribution links; our R2 does not host these installers.
+        internal const string VcRedistUrl = "https://aka.ms/vc14/vc_redist.x86.exe";
+        internal const string DirectXWebSetupUrl = "https://download.microsoft.com/download/1/7/1/1718CCC4-6315-4D8E-9543-8E28A4E18C4C/dxwebsetup.exe";
+
+        /// <summary>
+        ///     Detects the runtime libraries the game needs and offers to install the missing
+        ///     ones: the VC++ 2015-2022 x86 redistributable and the legacy DirectX (d3dx9)
+        ///     runtime. Installers are taken from a runtime_lib folder next to the launcher
+        ///     when present, otherwise downloaded from the official Microsoft links.
+        /// </summary>
+        private async Task EnsureRuntimeLibraries()
+        {
+            // This is an x86 process, so Environment.SystemDirectory is the x86 system folder
+            // (SysWOW64 on x64 Windows) - exactly where the x86 runtime DLLs must live.
+            bool vcMissing = !(File.Exists(Path.Combine(Environment.SystemDirectory, "msvcp140.dll"))
+                && File.Exists(Path.Combine(Environment.SystemDirectory, "vcruntime140.dll")));
+
+            // Modern Windows ships d3d9 but not the legacy D3DX utilities this game era uses.
+            bool dxMissing = !File.Exists(Path.Combine(Environment.SystemDirectory, "d3dx9_43.dll"));
+
+            if (!vcMissing && !dxMissing)
+                return;
+
+            string missingList = (vcMissing ? "  - Microsoft Visual C++ 2015-2022 (x86) 运行库 / Redistributable\n" : "")
+                               + (dxMissing ? "  - Microsoft DirectX End-User Runtime (legacy d3dx9)\n" : "");
+
+            DialogResult choice = MessageBox.Show(new Form { TopMost = true },
+                "检测到缺少以下运行库：\n" + missingList + "\n是否现在下载并安装？\n\n" +
+                "The following runtime libraries are missing:\n" + missingList +
+                "\nDownload and install them now?",
+                "Contra Launcher", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (choice != DialogResult.Yes)
+                return;
+
+            if (vcMissing)
+                await InstallRuntimePrerequisite("VC_redist.x86.exe", VcRedistUrl, "/install /passive /norestart");
+            if (dxMissing)
+                await InstallRuntimePrerequisite("dxwebsetup.exe", DirectXWebSetupUrl, "");
+        }
+
+        /// <summary>
+        ///     Runs one runtime installer, preferring a local copy in runtime_lib\ over
+        ///     downloading, and waits for the user to finish the installation.
+        /// </summary>
+        private async Task InstallRuntimePrerequisite(string fileName, string url, string arguments)
+        {
+            string local = Path.Combine(launcherExecutingPath, "runtime_lib", fileName);
+            string installer = File.Exists(local) ? local : Path.Combine(Path.GetTempPath(), fileName);
+
+            try
+            {
+                if (!File.Exists(installer))
+                    await DownloadFileSimple(url, installer, TimeSpan.FromMinutes(10));
+
+                ProcessStartInfo psi = new ProcessStartInfo(installer, arguments);
+                psi.UseShellExecute = true;
+
+                Process process = Process.Start(psi);
+                if (process != null)
+                    process.WaitForExit();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("运行库安装失败 / runtime install failed:\n" + ex.Message,
+                    "Contra Launcher", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
         /// <summary>
         ///     Registers the HIGHDPIAWARE compatibility layer (the "Override high DPI scaling
         ///     behaviour / 拒绝 DPI 缩放" checkbox) for the game executables. Layers are
@@ -1947,8 +2016,7 @@ namespace Contra
             }
 
             // The version dropdown decides the target; the vanilla generals.ctr swap below
-            // must only ever run for the GeneralsOriginal (将军原版) entry.
-            if (IsGoVersion)
+            // must only ever run for the GeneralsOriginal (将军原版) entry.            if (IsGoVersion)
             {
                 StartGeneralsOnline(Properties.Settings.Default.GoVersion == "GeneralsOnlineUnlimited");
                 return;
@@ -2642,6 +2710,9 @@ namespace Contra
             // Generate the GO client's settings.json (and its GeneralsOnlineData folder) when
             // missing, so a fresh machine starts with a valid client-defaults file too.
             OptionsForm.EnsureGoSettingsJson();
+
+            // Runtime prerequisites (VC++ x86, legacy DirectX) before anything needs them.
+            await EnsureRuntimeLibraries();
 
             // TheSuperHackers @feature Manifest-driven install repair: restore missing base-game
             // files from the registry-located retail/Steam installs and download missing engine
