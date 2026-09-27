@@ -60,6 +60,37 @@ namespace Contra
             new Regex("href=\"(?<url>https://dl\\.mayeamiya\\.dev/(?<path>[^\"]+))\"", RegexOptions.IgnoreCase);
 
         /// <summary>
+        ///     First-launch gate, run before everything else (including the self-update):
+        ///     without Contra_Installed.marker the launcher demands a clean (empty) folder -
+        ///     it must never bootstrap-install on top of an existing or unrelated directory.
+        ///     A dirty folder pops a bilingual notice and exits the launcher. Returns true
+        ///     when startup may continue (marker present, or folder is clean for bootstrap).
+        /// </summary>
+        public static bool EnsureCleanFolder()
+        {
+            string baseDir = MainForm.ResolveLauncherExecutingPath();
+            if (File.Exists(Path.Combine(baseDir, MarkerFileName)))
+                return true; // established install: check/repair mode
+
+            string notClean = FindFirstForeignItem(baseDir);
+            if (notClean == null)
+                return true; // clean folder: the bootstrap will run in RunAsync
+
+            MessageBox.Show(new Form { TopMost = true },
+                "首次安装要求启动器位于干净（空）的文件夹中。\n" +
+                "当前文件夹包含： " + notClean + "\n\n" +
+                "请将 Contra_Launcher_New.exe 移入空文件夹后重新运行。\n" +
+                "已安装的目录（含 Contra_Installed.marker）会自动进入检查修复模式。\n\n" +
+                "First install requires the launcher to sit in a clean (empty) folder.\n" +
+                "This folder contains: " + notClean + "\n" +
+                "Move Contra_Launcher_New.exe into an empty folder and run again.\n" +
+                "Installed folders (with Contra_Installed.marker) switch to check/repair mode automatically.",
+                "Contra Launcher", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            Application.Exit();
+            return false;
+        }
+
+        /// <summary>
         ///     Runs the whole bootstrap/repair pass. Silent when everything is present and
         ///     current; a top-most summary dialog lists restored files and failures.
         ///     Never throws: repair is a convenience and must not block launcher startup.
@@ -72,31 +103,6 @@ namespace Contra
 
             try
             {
-                // First-launch bootstrap: without the marker the launcher demands a clean
-                // (empty) folder - it must never bootstrap-install on top of an existing or
-                // unrelated directory. A dirty folder pops a bilingual notice and exits;
-                // once the install completes, the marker switches every later start into
-                // check/repair mode.
-                if (!File.Exists(Path.Combine(baseDir, MarkerFileName)))
-                {
-                    string notClean = FindFirstForeignItem(baseDir);
-                    if (notClean != null)
-                    {
-                        MessageBox.Show(new Form { TopMost = true },
-                            "首次安装要求启动器位于干净（空）的文件夹中。\n" +
-                            "当前文件夹包含： " + notClean + "\n\n" +
-                            "请将 Contra_Launcher_New.exe 移入空文件夹后重新运行。\n" +
-                            "已安装的目录（含 Contra_Installed.marker）会自动进入检查修复模式。\n\n" +
-                            "First install requires the launcher to sit in a clean (empty) folder.\n" +
-                            "This folder contains: " + notClean + "\n" +
-                            "Move Contra_Launcher_New.exe into an empty folder and run again.\n" +
-                            "Installed folders (with Contra_Installed.marker) switch to check/repair mode automatically.",
-                            "Contra Launcher", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        Application.Exit();
-                        return;
-                    }
-                }
-
                 List<string> zhInstalls = InstallLocator.FindZeroHourInstalls();
                 List<string> generalsInstalls = InstallLocator.FindGeneralsInstalls();
 

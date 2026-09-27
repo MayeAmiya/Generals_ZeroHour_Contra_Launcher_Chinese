@@ -2671,6 +2671,12 @@ namespace Contra
 
         private async void Form1_Shown(object sender, EventArgs e)
         {
+            // Startup order per spec: clean-folder gate first, then the self-update (which
+            // may restart the launcher under the renamed exe), then runtime libraries and
+            // the manifest-driven install repair.
+            if (!FileRepair.EnsureCleanFolder())
+                return;
+
             // Temporary hack so update runs on main thread, versionsTXT should be rewritten to be async if possible
             // TheSuperHackers @feature Auto-update is back, served from our own S3 channel
             // (see S3_BaseUrl): the launcher fetches Versions_X.txt, compares versions, downloads
