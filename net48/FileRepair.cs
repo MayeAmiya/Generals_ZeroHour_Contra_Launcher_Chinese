@@ -13,22 +13,20 @@ namespace Contra
     /// <summary>
     ///     Installation bootstrap and repair, driven by two sources:
     ///
-    ///     1. Base-game content (BuiltinFileLists, embedded in the exe): ZH_GENERALS and ZH
-    ///        files are restored from the registry-located retail/Steam installs (hard link
-    ///        when the source sits on the same volume, copy otherwise). Existence-based -
-    ///        a local retail install cannot provide a specific version.
+    ///     1. Base-game content by WHOLESALE DIRECTORY MAPPING (no per-file lists): the
+    ///        Steam-first Zero Hour install maps onto the launcher root (top-level files
+    ///        hard linked, top-level directories junctioned) - a Steam install brings its
+    ///        own ZH_Generals along; a retail Generals install maps into ZH_Generals.
     ///
     ///     2. The online index https://dl.mayeamiya.dev/index.html: every download link in
     ///        it belongs to a category folder (GeneralsOnlineUnlimited = engine + official
-    ///        GO clients, ContraXBeta2Patch1 = mod, GenTool_v8.9 = GenTool). Missing files
-    ///        are downloaded; already-present files are version-checked against the index
-    ///        via HTTP HEAD (ETag + Content-Length, cached in Contra_RemoteCache.txt) and
-    ///        re-fetched when either changes - no local file list needed.
+    ///        GO clients, ContraXBeta2Patch1 = mod, GenTool_v8.9 = GenTool). The check pass
+    ///        computes the download list upfront; the progress window counts downloads only.
     ///
     ///     First-launch gating: without Contra_Installed.marker the launcher demands a
-    ///     clean (empty) folder, pops a bilingual notice and exits otherwise. The marker is
-    ///     only written once an install completes without failures, switching later starts
-    ///     into check/repair mode.
+    ///     clean (empty) folder, pops a notice and exits otherwise. The marker is written
+    ///     after the first pass unconditionally, switching later starts into check/repair
+    ///     mode; a pass that changed anything restarts the launcher immediately.
     /// </summary>
     internal static class FileRepair
     {
@@ -37,6 +35,15 @@ namespace Contra
         ///     install (bootstrap done), switching later starts into check/repair mode.
         /// </summary>
         internal const string MarkerFileName = "Contra_Installed.marker";
+
+        /// <summary>
+        ///     True when the launcher directory carries the install marker, i.e. the first
+        ///     bootstrap already ran. Gates one-time behaviours such as language detection.
+        /// </summary>
+        public static bool MarkerExists()
+        {
+            return File.Exists(Path.Combine(MainForm.ResolveLauncherExecutingPath(), MarkerFileName));
+        }
 
         /// <summary>
         ///     Remembers the ETag + size of every index file we downloaded, so a changed
@@ -124,9 +131,7 @@ namespace Contra
 
                 // Phase 1: base-game content from the local installs. These are hard links /
                 // copies and finish instantly - no progress UI, no counters for them.
-                RestoreZhGenerals(baseDir, generalsInstalls, repaired, failed);
-                RestoreFromInstalls(baseDir, BuiltinFileLists.ZeroHourFiles, zhInstalls, "Zero Hour", repaired, failed);
-                RestoreSteamExtras(baseDir, zhInstalls, repaired, failed);
+                RestoreBaseGame(baseDir, zhInstalls, generalsInstalls, repaired, failed);
 
                 // Phase 2a: check the R2 index and work out exactly what has to download.
                 List<RemoteEntry> remote = await LoadRemoteIndex();
@@ -308,164 +313,87 @@ namespace Contra
         }
 
         // ---------------------------------------------------------------------
-        // Phase 1: base-game content from registry-located local installs
+        // ---------------------------------------------------------------------
+        // Phase 1: base-game content by WHOLESALE DIRECTORY MAPPING (no per-file
+        // lists): the mapped install's top-level files are hard linked (same
+        // volume) or copied, its top-level directories are junctioned. Whatever
+        // the local install carries - including its language packs - comes along
+        // under its own name. Different drive falls back to copying.
         // ---------------------------------------------------------------------
 
         /// <summary>
-        ///     Language tokens EA shipped the games in. Files like SpeechChineseZH.big /
-        ///     SpeechEnglishZH.big or AudioChinese.big / AudioEnglish.big are the same slot
-        ///     with a different language pack - the installer's language decides the name, so
-        ///     presence and restore are matched language-agnostically (one of them must exist).
+        ///     Base-game restore, Steam-first: the whole Steam Zero Hour directory maps
+        ///     onto the launcher root (its ZH_Generals subfolder comes along inside);
+        ///     retail installs map Zero Hour onto the launcher root and Generals into
+        ///     ZH_Generals.
         /// </summary>
-        private static readonly string[] LanguageTokens =
+        private static void RestoreBaseGame(string baseDir, List<string> zhInstalls,
+            List<string> generalsInstalls, List<RepairResult> repaired, List<RepairResult> failed)
         {
-            "Chinese", "English", "Russian", "French", "German", "Italian", "Spanish",
-            "Korean", "Japanese", "Polish", "Czech", "Turkish", "Portuguese", "Dutch", "Hungarian",
-        };
+            if (zhInstalls.Count > 0)
+            {
+                MapInstallToTarget(zhInstalls[0], baseDir, repaired, failed);
 
-        /// <summary>The language token inside a file name, or null when it has none.</summary>
-        private static string LanguageToken(string fileName)
-        {
-            foreach (string token in LanguageTokens)
-                if (fileName.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0)
-                    return token;
-            return null;
+                if (IsSteamInstall(zhInstalls[0]))
+                    RestoreSteamExtras(baseDir, zhInstalls, repaired, failed);
+            }
+
+            // Steam installs carry ZH_Generals inside; retail ones do not, so the
+            // Generals install maps into ZH_Generals when nothing provided it yet.
+            if (!Directory.Exists(Path.Combine(baseDir, "ZH_Generals")) && generalsInstalls.Count > 0)
+                MapInstallToTarget(generalsInstalls[0], Path.Combine(baseDir, "ZH_Generals"), repaired, failed);
         }
 
         /// <summary>
-        ///     True when any language variant of the file exists in the directory: the
-        ///     embedded name's language token is swapped for every known language and each
-        ///     exact candidate is probed (never a wildcard - "*.big" would match everything).
+        ///     Maps an install directory into a target directory: top-level files are hard
+        ///     linked (same volume) or copied, top-level directories are junctioned. Items
+        ///     that already exist are left untouched; when a target subdirectory already
+        ///     exists as a real folder its contents are mapped recursively instead.
         /// </summary>
-        private static bool LanguageVariantPresent(string directory, string fileName)
-        {
-            string token = LanguageToken(fileName);
-            if (token == null)
-                return false;
-
-            int index = fileName.IndexOf(token, StringComparison.OrdinalIgnoreCase);
-            foreach (string candidate in LanguageTokens)
-            {
-                string name = fileName.Substring(0, index) + candidate + fileName.Substring(index + token.Length);
-                if (File.Exists(Path.Combine(directory, name)))
-                    return true;
-            }
-            return false;
-        }
-
-        /// <summary>
-        ///     Restores a file from any of the local installs. Language-variant files are
-        ///     looked up across all known language names and linked/copied UNDER THE SOURCE'S
-        ///     OWN NAME (an English install provides English.big, never renamed to Chinese.big).
-        ///     Same-volume sources are hard linked, others copied.
-        /// </summary>
-        private static bool TryRestoreFromInstalls(string relativePath, string target, List<string> installs,
-            string gameName, out string error)
-        {
-            if (installs.Count == 0)
-            {
-                error = L("注册表中未找到 " + gameName + " 安装位置",
-                          "no " + gameName + " install found in the registry");
-                return false;
-            }
-
-            string targetDir = Path.GetDirectoryName(target);
-            string fileName = Path.GetFileName(target);
-            string languageToken = LanguageToken(fileName);
-
-            foreach (string install in installs)
-            {
-                string installRelativeDir = Path.GetDirectoryName(relativePath.Replace('/', '\\')) ?? "";
-                string sourceDir = Path.Combine(install, installRelativeDir);
-
-                if (languageToken != null)
-                {
-                    // Language pack: accept whatever variant the local install carries and
-                    // keep its own file name.
-                    int index = fileName.IndexOf(languageToken, StringComparison.OrdinalIgnoreCase);
-                    foreach (string candidate in LanguageTokens)
-                    {
-                        string candidateName = fileName.Substring(0, index) + candidate
-                            + fileName.Substring(index + languageToken.Length);
-                        string source = Path.Combine(sourceDir, candidateName);
-                        if (!File.Exists(source))
-                            continue;
-
-                        Directory.CreateDirectory(targetDir);
-                        string finalTarget = Path.Combine(targetDir, candidateName);
-                        if (!TryHardLink(source, finalTarget))
-                            File.Copy(source, finalTarget, false);
-                        error = null;
-                        return true;
-                    }
-                }
-                else
-                {
-                    string source = Path.Combine(install, relativePath.Replace('/', '\\'));
-                    if (!File.Exists(source))
-                        continue;
-
-                    Directory.CreateDirectory(targetDir);
-                    if (!TryHardLink(source, target))
-                        File.Copy(source, target, false);
-                    error = null;
-                    return true;
-                }
-            }
-
-            error = languageToken != null
-                ? L("注册表给出的 " + gameName + " 安装中没有任何语言版本的该文件",
-                    "none of the registry-located " + gameName + " installs carries any language variant of this file")
-                : L("注册表给出的 " + gameName + " 目录中也没有该文件",
-                    "not found in any registry-located " + gameName + " install");
-            return false;
-        }
-        private static void RestoreZhGenerals(string baseDir, List<string> installs,
+        private static void MapInstallToTarget(string install, string targetBase,
             List<RepairResult> repaired, List<RepairResult> failed)
         {
-            string targetBase = Path.Combine(baseDir, "ZH_Generals");
-
-            // A Steam install can be mapped directly: one junction covers every file.
-            if (!Directory.Exists(targetBase))
+            try
             {
-                foreach (string install in installs)
+                Directory.CreateDirectory(targetBase);
+
+                foreach (string file in Directory.GetFiles(install))
                 {
-                    if (!IsSteamInstall(install))
+                    string target = Path.Combine(targetBase, Path.GetFileName(file));
+                    if (File.Exists(target))
                         continue;
 
-                    if (TryCreateJunction(targetBase, install))
+                    if (TryHardLink(file, target))
+                        repaired.Add(new RepairResult { Path = Path.GetFileName(file) + " (link)" });
+                    else
                     {
-                        repaired.Add(new RepairResult
-                        {
-                            Path = "ZH_Generals -> " + install + " (junction)"
-                        });
-                        return; // everything below the junction exists now
+                        File.Copy(file, target, false);
+                        repaired.Add(new RepairResult { Path = Path.GetFileName(file) + " (copy)" });
                     }
                 }
-            }
-            else if (IsReparsePoint(targetBase))
-            {
-                return; // already mapped to an install
-            }
 
-            foreach (string relativePath in BuiltinFileLists.ZhGeneralsFiles)
-            {
-                try
+                foreach (string dir in Directory.GetDirectories(install))
                 {
-                    string target = Path.Combine(targetBase, relativePath.Replace('/', '\\'));
-                    if (File.Exists(target) || LanguageVariantPresent(targetBase, Path.GetFileName(target)))
+                    string name = Path.GetFileName(dir);
+                    string target = Path.Combine(targetBase, name);
+
+                    if (Directory.Exists(target))
+                    {
+                        if (IsReparsePoint(target))
+                            continue; // already mapped
+                        MapInstallToTarget(dir, target, repaired, failed); // real folder: map into it
                         continue;
+                    }
 
-                    string error;
-                    if (TryRestoreFromInstalls(relativePath, target, installs, "Generals", out error))
-                        repaired.Add(new RepairResult { Path = "ZH_Generals\\" + relativePath });
+                    if (TryCreateJunction(target, dir))
+                        repaired.Add(new RepairResult { Path = name + " -> " + dir + " (junction)" });
                     else
-                        failed.Add(new RepairResult { Path = "ZH_Generals\\" + relativePath, Error = error });
+                        MapInstallToTarget(dir, target, repaired, failed); // junction refused: map per item
                 }
-                catch (Exception ex)
-                {
-                    failed.Add(new RepairResult { Path = "ZH_Generals\\" + relativePath, Error = ex.Message });
-                }
+            }
+            catch (Exception ex)
+            {
+                failed.Add(new RepairResult { Path = install, Error = ex.Message });
             }
         }
 
@@ -555,30 +483,6 @@ namespace Contra
             catch
             {
                 return false;
-            }
-        }
-
-        private static void RestoreFromInstalls(string baseDir, string[] files, List<string> installs,
-            string gameName, List<RepairResult> repaired, List<RepairResult> failed)
-        {
-            foreach (string relativePath in files)
-            {
-                try
-                {
-                    string target = Path.Combine(baseDir, relativePath.Replace('/', '\\'));
-                    if (File.Exists(target) || LanguageVariantPresent(baseDir, Path.GetFileName(target)))
-                        continue;
-
-                    string error;
-                    if (TryRestoreFromInstalls(relativePath, target, installs, gameName, out error))
-                        repaired.Add(new RepairResult { Path = relativePath });
-                    else
-                        failed.Add(new RepairResult { Path = relativePath, Error = error });
-                }
-                catch (Exception ex)
-                {
-                    failed.Add(new RepairResult { Path = relativePath, Error = ex.Message });
-                }
             }
         }
 

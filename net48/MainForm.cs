@@ -2722,6 +2722,10 @@ namespace Contra
             if (!FileRepair.EnsureCleanFolder())
                 return;
 
+            // One-time behaviours (language auto-detection) run only before the install
+            // marker exists; established installs always follow the user's saved choice.
+            bool firstLaunch = !FileRepair.MarkerExists();
+
             // Temporary hack so update runs on main thread, versionsTXT should be rewritten to be async if possible
             // TheSuperHackers @feature Auto-update is back, served from our own S3 channel
             // (see S3_BaseUrl): the launcher fetches Versions_X.txt, compares versions, downloads
@@ -2981,9 +2985,12 @@ namespace Contra
 
                 // Determine user language and apply. Chinese is detected here as well; the prompt below only
                 // fires when the launcher is not in Chinese, so a Chinese system is simply already correct.
-                // Chinese first, by prefix: ICU reports "zh-Hans-CN", which never equals the
-                // legacy exact names and used to silently fall through to English.
-                if (IsChineseSystemLanguage()) RadioFlag_CN.Checked = true;
+                // Detection is a FIRST-LAUNCH behaviour only (no install marker yet): later
+                // starts always follow the user's saved choice. Chinese first, by prefix:
+                // ICU reports "zh-Hans-CN", which never equals the legacy exact names and
+                // used to silently fall through to English.
+                if (!firstLaunch) { /* established install: keep the saved language */ }
+                else if (IsChineseSystemLanguage()) RadioFlag_CN.Checked = true;
                 else if (GetCurrentCulture() == "en-US") RadioFlag_GB.Checked = true;
                 else if (GetCurrentCulture() == "ru-RU") RadioFlag_RU.Checked = true;
                 else if (GetCurrentCulture() == "uk-UA") RadioFlag_UA.Checked = true;
@@ -3074,10 +3081,14 @@ namespace Contra
             // The flag panel has no room for a sixth button, so Chinese is auto-detected instead:
             // a Chinese system switches on its own; everyone else just gets the language they
             // picked (English default), exactly like the original launcher - no prompt.
+            // Detection is a FIRST-LAUNCH behaviour only: an established install (marker
+            // present) never overrides the user's saved choice.
             if (!RadioFlag_CN.Checked && !RadioFlag_GB.Checked && !RadioFlag_RU.Checked &&
                 !RadioFlag_UA.Checked && !RadioFlag_BG.Checked && !RadioFlag_DE.Checked)
             {
-                if (IsChineseSystemLanguage())
+                if (!firstLaunch)
+                    RadioFlag_GB.Checked = true;
+                else if (IsChineseSystemLanguage())
                     RadioFlag_CN.Checked = true;
                 else
                     RadioFlag_GB.Checked = true;

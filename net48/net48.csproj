@@ -94,7 +94,6 @@
     <Reference Include="System.IO.Compression.FileSystem" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BuiltinFileLists.cs" />
     <Compile Include="FileRepair.cs" />
     <Compile Include="FileRepairProgressForm.cs">
       <SubType>Form</SubType>
