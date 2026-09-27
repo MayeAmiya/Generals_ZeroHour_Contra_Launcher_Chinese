@@ -18,7 +18,6 @@ namespace Contra
         internal static readonly string[] ZhGeneralsFiles =
         {
             "Audio.big",
-            "AudioEnglish.big",
             "Data/Cursors/SCCAttMov.ani",
             "Data/Cursors/SCCAttMov_S.ani",
             "Data/Cursors/SCCAttack_S.ani",
@@ -119,7 +118,6 @@ namespace Contra
             "Music.big",
             "Patch.big",
             "Speech.big",
-            "SpeechEnglish.big",
             "Terrain.big",
             "Textures.big",
             "W3D.big",
@@ -136,7 +134,6 @@ namespace Contra
         {
             "00000000.016",
             "00000000.256",
-            "AudioEnglishZH.big",
             "AudioZH.big",
             "BINKW32.DLL",
             "Data/Cursors/SCCAttMov.ani",
@@ -257,11 +254,9 @@ namespace Contra
             "PatchWindow.big",
             "PatchZH.big",
             "ShadersZH.big",
-            "SpeechEnglishZH.big",
             "SpeechZH.big",
             "TerrainZH.big",
             "TexturesZH.big",
-            "W3DEnglishZH.big",
             "W3DZH.big",
             "WindowZH.big",
             "WorldBuilder.exe",
