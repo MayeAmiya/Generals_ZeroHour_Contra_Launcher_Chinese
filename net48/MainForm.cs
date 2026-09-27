@@ -61,9 +61,10 @@ namespace Contra
 
             // Get "Command and Conquer Generals Zero Hour Data" path:
             // Try to get path the hard-coded way
-            if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + @"\Command and Conquer Generals Zero Hour Data\"))
+            string defaultDocPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + @"\Command and Conquer Generals Zero Hour Data\";
+            if (Directory.Exists(defaultDocPath))
             {
-                Globals.myDocPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + @"\Command and Conquer Generals Zero Hour Data\";
+                Globals.myDocPath = defaultDocPath;
             }
             // If above fails, search in Registry
             else
@@ -85,10 +86,30 @@ namespace Contra
                         ourVar = userDataRegistryPath.GetValue("UserDataLeafName") as string;
                     }
                 }
-                if (ourVar != null)
+                // TheSuperHackers @bugfix An empty or missing UserDataLeafName must not redirect the
+                // data path onto the Documents folder itself (the old null-only check let the empty
+                // default through and pointed every file operation at the Documents root).
+                if (!string.IsNullOrEmpty(ourVar))
                 {
                     Globals.myDocPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + @"\" + ourVar + @"\";
                 }
+            }
+
+            // TheSuperHackers @bugfix The launcher now creates the user data folder itself when it
+            // does not exist (fresh machines, no registry entry, deleted folder), so startup can
+            // generate Options.ini and the GO client's settings.json without depending on a
+            // previous game run.
+            if (string.IsNullOrEmpty(Globals.myDocPath))
+            {
+                Globals.myDocPath = defaultDocPath;
+            }
+            if (!Directory.Exists(Globals.myDocPath))
+            {
+                try
+                {
+                    Directory.CreateDirectory(Globals.myDocPath);
+                }
+                catch { }
             }
 
             DelTmpChunk();
@@ -136,7 +157,33 @@ namespace Contra
         string versions_url = "https://raw.githubusercontent.com/ContraMod/Launcher/master/Versions_X.txt";
         string launcher_url = "https://github.com/ContraMod/Launcher/releases/download/";
         string patch_url = "http://contra.cncguild.net/Downloads/";
-        static string launcherExecutingPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+        // TheSuperHackers @tweak This launcher is a standalone fork with its own distribution
+        // channel. The built-in self-update contacts the official ContraMod servers and would
+        // overwrite this build with the official launcher if it ever ran - updates are handled
+        // by shipping new builds instead. UpdateLogic() stays disabled and the exit-time
+        // exe-swap cleanup is skipped.
+        internal const bool EnableSelfUpdate = false;
+
+        // TheSuperHackers @bugfix In single-file published builds Assembly.Location returns an
+        // empty string and Path.GetDirectoryName("") returns null, which made every
+        // Path.Combine(launcherExecutingPath, ...) throw "Value cannot be null (path1)" - e.g.
+        // the update cleanup on exit. Fall back to the process path and AppContext.BaseDirectory,
+        // which keep working in both single-file and framework-dependent folder layouts.
+        static string launcherExecutingPath = ResolveLauncherExecutingPath();
+
+        private static string ResolveLauncherExecutingPath()
+        {
+            string dir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            if (string.IsNullOrEmpty(dir))
+            {
+#if NET5_0_OR_GREATER
+                dir = Path.GetDirectoryName(Environment.ProcessPath);
+#endif
+            }
+            if (string.IsNullOrEmpty(dir))
+                dir = AppContext.BaseDirectory;
+            return dir?.TrimEnd('\\', '/') ?? "";
+        }
         bool applyNewLauncher = false;
 
         [DllImport("version.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -2166,15 +2213,17 @@ namespace Contra
         private async void Form1_Shown(object sender, EventArgs e)
         {
             // Temporary hack so update runs on main thread, versionsTXT should be rewritten to be async if possible
-            try
-            {
-                await UpdateLogic();
-            }
-            catch (Exception ex)
-            {
-                // Log the exception but don't show it to avoid interrupting the user
-                System.Diagnostics.Debug.WriteLine($"UpdateLogic error: {ex.Message}");
-            }
+            // TheSuperHackers @feature Auto-update disabled: the launcher no longer checks for or
+            // downloads launcher updates on startup. Version bumps and distribution are manual.
+            //try
+            //{
+            //    await UpdateLogic();
+            //}
+            //catch (Exception ex)
+            //{
+            //    // Log the exception but don't show it to avoid interrupting the user
+            //    System.Diagnostics.Debug.WriteLine($"UpdateLogic error: {ex.Message}");
+            //}
 
             string gtHash = null;
             try
@@ -2215,11 +2264,17 @@ namespace Contra
                 DownloadGentool(gtURL);
             }
 
-            // Cleanup old Launcher file after update
+            // Cleanup old Launcher file after update. The delete is tolerated: when the user
+            // launched the leftover Contra_Launcher_ToDelete.exe itself, the file is locked
+            // by our own process and simply stays for the next start.
             if (File.Exists(launcherExecutingPath + @"\Contra_Launcher_ToDelete.exe"))
             {
-                File.SetAttributes("Contra_Launcher_ToDelete.exe", FileAttributes.Normal);
-                File.Delete(launcherExecutingPath + @"\Contra_Launcher_ToDelete.exe");
+                try
+                {
+                    File.SetAttributes("Contra_Launcher_ToDelete.exe", FileAttributes.Normal);
+                    File.Delete(launcherExecutingPath + @"\Contra_Launcher_ToDelete.exe");
+                }
+                catch { }
             }
 
             // Generate Options.ini if missing.
@@ -2479,26 +2534,16 @@ namespace Contra
                 Properties.Settings.Default.Save();
             }
 
-            // The flag panel has no room for a sixth button, so Chinese is offered at startup instead.
-            // A Chinese system switches on its own and is never asked; the bilingual prompt is for
-            // everyone else and asks on every launch until Chinese is picked.
-            if (!RadioFlag_CN.Checked)
+            // The flag panel has no room for a sixth button, so Chinese is auto-detected instead:
+            // a Chinese system switches on its own; everyone else just gets the language they
+            // picked (English default), exactly like the original launcher - no prompt.
+            if (!RadioFlag_CN.Checked && !RadioFlag_GB.Checked && !RadioFlag_RU.Checked &&
+                !RadioFlag_UA.Checked && !RadioFlag_BG.Checked && !RadioFlag_DE.Checked)
             {
                 if (GetCurrentCulture() == "zh-CN" || GetCurrentCulture() == "zh-Hans")
-                {
                     RadioFlag_CN.Checked = true;
-                }
                 else
-                {
-                    DialogResult switchToChinese = MessageBox.Show(
-                        new Form { TopMost = true },
-                        "Switch the launcher to Simplified Chinese?\n\n是否将启动器界面切换为简体中文?",
-                        "Language / 语言",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Question);
-                    if (switchToChinese == DialogResult.Yes)
-                        RadioFlag_CN.Checked = true;
-                }
+                    RadioFlag_GB.Checked = true;
             }
 
             // Show warning if the base mod isn't found.
@@ -2554,24 +2599,69 @@ namespace Contra
 
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
-            //If updating has failed, clear the 0KB file
-            if (File.Exists($"{launcherExecutingPath}\\Contra_Launcher_{newVersion}.exe") && (applyNewLauncher == false))
-            {
-                File.Delete($"{launcherExecutingPath}\\Contra_Launcher_{newVersion}.exe");
-            }
-            //This renames the original file so any shortcut works and names it accordingly after the update
-            if (File.Exists($"{launcherExecutingPath}\\Contra_Launcher_{newVersion}.exe") && (applyNewLauncher == true))
-            {
-                File.Move($"{launcherExecutingPath}\\Contra_Launcher.exe", $"{launcherExecutingPath}\\Contra_Launcher_ToDelete.exe");
-                File.Move($"{launcherExecutingPath}\\Contra_Launcher_{newVersion}.exe", $"{launcherExecutingPath}\\Contra_Launcher.exe");
-                //Process.Start(Path.Combine(launcherExecutingPath, "Contra_Launcher.exe"));
-            }
+            // Self-update is disabled in this fork (see EnableSelfUpdate): the exe-swap cleanup
+            // below is dead code for us, so skip it entirely and never show its failure dialog.
+            if (!EnableSelfUpdate)
+                return;
 
-            //Restart launcher after patching the mod
-            //if (restartLauncher == true)
-            //{
-            //    Process.Start(Path.Combine(launcherExecutingPath, "Contra_Launcher.exe"));
-            //}
+            // TheSuperHackers @bugfix The update cleanup used to throw when a leftover
+            // Contra_Launcher_ToDelete.exe was present (e.g. when the launcher itself is
+            // running under that name from a previous update) - File.Move does not
+            // overwrite. Cleanup is now defensive and never crashes the launcher.
+            try
+            {
+                string versionedExe = Path.Combine(launcherExecutingPath, $"Contra_Launcher_{newVersion}.exe");
+                string currentExe = Path.Combine(launcherExecutingPath, "Contra_Launcher.exe");
+                string toDeleteExe = Path.Combine(launcherExecutingPath, "Contra_Launcher_ToDelete.exe");
+
+                if (applyNewLauncher == false)
+                {
+                    // If updating has failed, clear the 0KB file
+                    if (File.Exists(versionedExe))
+                        File.Delete(versionedExe);
+                    return;
+                }
+
+                if (!File.Exists(versionedExe))
+                    return;
+
+                // Clear stale ToDelete leftovers; when it is the currently running exe the
+                // delete is locked, so tolerate the failure (next startup retries).
+                if (File.Exists(toDeleteExe))
+                {
+                    File.SetAttributes(toDeleteExe, FileAttributes.Normal);
+                    try { File.Delete(toDeleteExe); } catch { }
+                }
+
+                // Move the current launcher aside so shortcuts keep working. Renaming a
+                // running exe is allowed; if it still fails (locked target), delete instead.
+                if (File.Exists(currentExe))
+                {
+                    try { File.Move(currentExe, toDeleteExe); }
+                    catch
+                    {
+                        try { File.Delete(currentExe); } catch { }
+                    }
+                }
+
+                if (File.Exists(currentExe))
+                    File.Delete(currentExe);
+
+                File.Move(versionedExe, currentExe);
+            }
+            catch (Exception ex)
+            {
+                // Never crash the launcher on exit; any leftovers are retried on next start.
+                try
+                {
+                    MessageBox.Show(
+                        "Launcher update cleanup failed:\n" + ex.Message +
+                        "\n\nContra_Launcher_ToDelete.exe and Contra_Launcher_*.exe leftovers can be deleted manually.\n\n" +
+                        "启动器更新收尾失败，可手动删除 Contra_Launcher_ToDelete.exe 等残留文件。",
+                        "Contra Launcher", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                catch { }
+            }
         }
 
         public static bool isGentoolInstalled(string gentoolPath)
