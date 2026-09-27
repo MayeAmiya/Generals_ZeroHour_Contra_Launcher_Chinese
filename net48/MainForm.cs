@@ -2144,7 +2144,8 @@ namespace Contra
             }
 
             // The version dropdown decides the target; the vanilla generals.ctr swap below
-            // must only ever run for the GeneralsOriginal (将军原版) entry.            if (IsGoVersion)
+            // must only ever run for the GeneralsOriginal (将军原版) entry.
+            if (IsGoVersion)
             {
                 StartGeneralsOnline(Properties.Settings.Default.GoVersion == "GeneralsOnlineUnlimited");
                 return;
