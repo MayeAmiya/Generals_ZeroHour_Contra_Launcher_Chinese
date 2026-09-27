@@ -24,10 +24,176 @@
 # The S3 base URL lives in MainForm.S3_BaseUrl; launcher self-update reads
 # Versions_X.txt from the same bucket.
 #
-# 示例（全部注释中，清单未整理完成前功能保持休眠）:
-# Examples (all commented - the feature stays dormant until the final list is filled in):
+# 示例:
+# Examples:
 #
 # ZH|data\INI.ini
-# ZH_GENERALS|Maps\Generals Maps
 # ENGINE|GeneralsOnlineZH_Unlimited.exe
 # MOD|!!!!Contra009Final_Patch3.big
+
+# ============================================================
+# ZH_GENERALS —— 原版将军（Generals 1.04 零售中文版）完整文件清单
+# Base Generals content (retail Chinese 1.04), 157 files, generated from
+# "Command & Conquer Generals Gold\Command & Conquer Generals".
+# 启动器目录缺失时从注册表定位的 Generals 安装按原路径拷贝。
+# ============================================================
+
+ZH_GENERALS|00000000.016
+ZH_GENERALS|00000000.256
+ZH_GENERALS|Audio.big
+ZH_GENERALS|BINKW32.DLL
+ZH_GENERALS|BrowserEngine.dll
+ZH_GENERALS|Chinese.big
+ZH_GENERALS|Data/Cursors/SCCAttMov.ani
+ZH_GENERALS|Data/Cursors/SCCAttMov_S.ani
+ZH_GENERALS|Data/Cursors/SCCAttack_S.ani
+ZH_GENERALS|Data/Cursors/SCCCashHack.ani
+ZH_GENERALS|Data/Cursors/SCCEnter.ani
+ZH_GENERALS|Data/Cursors/SCCEnter_S.ani
+ZH_GENERALS|Data/Cursors/SCCExit.ani
+ZH_GENERALS|Data/Cursors/SCCFriendly.ani
+ZH_GENERALS|Data/Cursors/SCCFriendly_S.ani
+ZH_GENERALS|Data/Cursors/SCCGuard.ani
+ZH_GENERALS|Data/Cursors/SCCHeal.ani
+ZH_GENERALS|Data/Cursors/SCCHostile.ani
+ZH_GENERALS|Data/Cursors/SCCHostile2.ani
+ZH_GENERALS|Data/Cursors/SCCHostile3.ani
+ZH_GENERALS|Data/Cursors/SCCHostile_S.ani
+ZH_GENERALS|Data/Cursors/SCCKnifeAttack.ani
+ZH_GENERALS|Data/Cursors/SCCMove_S.ani
+ZH_GENERALS|Data/Cursors/SCCNoAction.ani
+ZH_GENERALS|Data/Cursors/SCCNoAction_S.ani
+ZH_GENERALS|Data/Cursors/SCCNoBomb.ani
+ZH_GENERALS|Data/Cursors/SCCNoEntry.ani
+ZH_GENERALS|Data/Cursors/SCCNoEntry_S.ani
+ZH_GENERALS|Data/Cursors/SCCNoKnife.ani
+ZH_GENERALS|Data/Cursors/SCCOutrange.ani
+ZH_GENERALS|Data/Cursors/SCCPlace.ani
+ZH_GENERALS|Data/Cursors/SCCPlaceBeacon.ani
+ZH_GENERALS|Data/Cursors/SCCRallyPnt.ani
+ZH_GENERALS|Data/Cursors/SCCRallyPnt_S.ani
+ZH_GENERALS|Data/Cursors/SCCRemoteChg.ani
+ZH_GENERALS|Data/Cursors/SCCRepair.ani
+ZH_GENERALS|Data/Cursors/SCCResumeC.ani
+ZH_GENERALS|Data/Cursors/SCCSDIUplink.ani
+ZH_GENERALS|Data/Cursors/SCCScroll4.ani
+ZH_GENERALS|Data/Cursors/SCCScroll5.ani
+ZH_GENERALS|Data/Cursors/SCCScroll6.ani
+ZH_GENERALS|Data/Cursors/SCCScroll7.ani
+ZH_GENERALS|Data/Cursors/SCCSelect.ani
+ZH_GENERALS|Data/Cursors/SCCSell.ani
+ZH_GENERALS|Data/Cursors/SCCSniper.ani
+ZH_GENERALS|Data/Cursors/SCCSpyDrone.ani
+ZH_GENERALS|Data/Cursors/SCCStop.ani
+ZH_GENERALS|Data/Cursors/SCCTNTAttack.ani
+ZH_GENERALS|Data/Cursors/SCCTimedChg.ani
+ZH_GENERALS|Data/Cursors/SCCWaypoint.ani
+ZH_GENERALS|Data/Cursors/SCCWaypoint_S.ani
+ZH_GENERALS|Data/Cursors/sccattack.ani
+ZH_GENERALS|Data/Cursors/sccmove.ani
+ZH_GENERALS|Data/Cursors/sccpointer.ani
+ZH_GENERALS|Data/Cursors/sccscroll0.ani
+ZH_GENERALS|Data/Cursors/sccscroll1.ani
+ZH_GENERALS|Data/Cursors/sccscroll2.ani
+ZH_GENERALS|Data/Cursors/sccscroll3.ani
+ZH_GENERALS|Data/Movies/CHINA_end.bik
+ZH_GENERALS|Data/Movies/CHINA_end640.bik
+ZH_GENERALS|Data/Movies/China01_Final_00s.bik
+ZH_GENERALS|Data/Movies/China02_Final_00s.bik
+ZH_GENERALS|Data/Movies/China03_Final_00s.bik
+ZH_GENERALS|Data/Movies/China04_Final_00s.bik
+ZH_GENERALS|Data/Movies/China05_Final_00s.bik
+ZH_GENERALS|Data/Movies/China06_Final_00s.bik
+ZH_GENERALS|Data/Movies/China07_Final_00s.bik
+ZH_GENERALS|Data/Movies/GLA01_Final_00s.bik
+ZH_GENERALS|Data/Movies/GLA02_Final_00s.bik
+ZH_GENERALS|Data/Movies/GLA03_Final_00s.bik
+ZH_GENERALS|Data/Movies/GLA04_Final_00s.bik
+ZH_GENERALS|Data/Movies/GLA05_Final_00s.bik
+ZH_GENERALS|Data/Movies/GLA06_Final_00s.bik
+ZH_GENERALS|Data/Movies/GLA07_Final_00s.bik
+ZH_GENERALS|Data/Movies/GLA08_Final_00s.bik
+ZH_GENERALS|Data/Movies/GLA_end.bik
+ZH_GENERALS|Data/Movies/GLA_end640.bik
+ZH_GENERALS|Data/Movies/Training_Final_00s.bik
+ZH_GENERALS|Data/Movies/USA01_Final_00s.bik
+ZH_GENERALS|Data/Movies/USA02_Final_00s.bik
+ZH_GENERALS|Data/Movies/USA03_Final_00s.bik
+ZH_GENERALS|Data/Movies/USA04_Final_00s.bik
+ZH_GENERALS|Data/Movies/USA06_Final_00s.bik
+ZH_GENERALS|Data/Movies/USA07_Final_00s.bik
+ZH_GENERALS|Data/Movies/USA08_Final_00s.bik
+ZH_GENERALS|Data/Movies/USA_end.bik
+ZH_GENERALS|Data/Movies/USA_end640.bik
+ZH_GENERALS|Data/Scripts/MultiplayerScripts.scb
+ZH_GENERALS|Data/Scripts/SkirmishScripts.scb
+ZH_GENERALS|Data/WaterPlane/caust00.tga
+ZH_GENERALS|Data/WaterPlane/caust01.tga
+ZH_GENERALS|Data/WaterPlane/caust02.tga
+ZH_GENERALS|Data/WaterPlane/caust03.tga
+ZH_GENERALS|Data/WaterPlane/caust04.tga
+ZH_GENERALS|Data/WaterPlane/caust05.tga
+ZH_GENERALS|Data/WaterPlane/caust06.tga
+ZH_GENERALS|Data/WaterPlane/caust07.tga
+ZH_GENERALS|Data/WaterPlane/caust08.tga
+ZH_GENERALS|Data/WaterPlane/caust09.tga
+ZH_GENERALS|Data/WaterPlane/caust10.tga
+ZH_GENERALS|Data/WaterPlane/caust11.tga
+ZH_GENERALS|Data/WaterPlane/caust12.tga
+ZH_GENERALS|Data/WaterPlane/caust13.tga
+ZH_GENERALS|Data/WaterPlane/caust14.tga
+ZH_GENERALS|Data/WaterPlane/caust15.tga
+ZH_GENERALS|Data/WaterPlane/caust16.tga
+ZH_GENERALS|Data/WaterPlane/caust17.tga
+ZH_GENERALS|Data/WaterPlane/caust18.tga
+ZH_GENERALS|Data/WaterPlane/caust19.tga
+ZH_GENERALS|Data/WaterPlane/caust20.tga
+ZH_GENERALS|Data/WaterPlane/caust21.tga
+ZH_GENERALS|Data/WaterPlane/caust22.tga
+ZH_GENERALS|Data/WaterPlane/caust23.tga
+ZH_GENERALS|Data/WaterPlane/caust24.tga
+ZH_GENERALS|Data/WaterPlane/caust25.tga
+ZH_GENERALS|Data/WaterPlane/caust26.tga
+ZH_GENERALS|Data/WaterPlane/caust27.tga
+ZH_GENERALS|Data/WaterPlane/caust28.tga
+ZH_GENERALS|Data/WaterPlane/caust29.tga
+ZH_GENERALS|Data/WaterPlane/caust30.tga
+ZH_GENERALS|Data/WaterPlane/caust31.tga
+ZH_GENERALS|DrvMgt.dll
+ZH_GENERALS|Generals.dat
+ZH_GENERALS|Generals.exe
+ZH_GENERALS|INI.big
+ZH_GENERALS|Install_Final.bmp
+ZH_GENERALS|MSS/mssa3d.m3d
+ZH_GENERALS|MSS/mssds3d.m3d
+ZH_GENERALS|MSS/mssdsp.flt
+ZH_GENERALS|MSS/mssdx7.m3d
+ZH_GENERALS|MSS/msseax.m3d
+ZH_GENERALS|MSS/mssmp3.asi
+ZH_GENERALS|MSS/mssrsx.m3d
+ZH_GENERALS|MSS/msssoft.m3d
+ZH_GENERALS|MSS/mssvoice.asi
+ZH_GENERALS|Music.big
+ZH_GENERALS|P2XDLL.DLL
+ZH_GENERALS|Patch.big
+ZH_GENERALS|SECDRV.SYS
+ZH_GENERALS|Speech.big
+ZH_GENERALS|SpeechChinese.big
+ZH_GENERALS|Terrain.big
+ZH_GENERALS|Textures.big
+ZH_GENERALS|W3D.big
+ZH_GENERALS|Window.big
+ZH_GENERALS|WorldBuilder.exe
+ZH_GENERALS|audiochinese.big
+ZH_GENERALS|dbghelp.dll
+ZH_GENERALS|generals.lcf
+ZH_GENERALS|gensec.big
+ZH_GENERALS|langdata.dat
+ZH_GENERALS|launcher.bmp
+ZH_GENERALS|maps.big
+ZH_GENERALS|mss32.dll
+ZH_GENERALS|patchget.dat
+ZH_GENERALS|patchw32.dll
+ZH_GENERALS|shaders.big
+
+# ZH_GENERALS 共 / total: 157 条 (Generals 1.04 零售中文版完整清单)
