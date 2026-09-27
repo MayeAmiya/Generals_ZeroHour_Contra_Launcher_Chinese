@@ -269,5 +269,7 @@ ENGINE|libcurl.dll|8b25a876db526fb3c04ea711a35bd39f6709b550868769a5c76bba5a32c21
 ENGINE|libprotobuf.dll|b2ce5857f4303350c5cc3724cad66532cce62625b353168e8bda9032dc7b998a
 ENGINE|libssl-3.dll|359506eb1e3c4f21d68d6d88ff0166f9d842129201b3ece1596b8398a9832569
 ENGINE|zlib1.dll|b827a65b9366ea8f7d951db373fb6a18d04aed6954c0f62a03db9629bec2a11d
+ENGINE|GeneralsOnlineZH.exe
+ENGINE|GeneralsOnlineZH_60.exe
 
-# 汇总 / totals: ZH_GENERALS=44 ZH=133 MOD=35 ENGINE=11
+# 汇总 / totals: ZH_GENERALS=44 ZH=133 MOD=35 ENGINE=13 (GO 客户端两个 exe 不校验版本 / GO client exes are existence-only)

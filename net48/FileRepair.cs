@@ -33,6 +33,12 @@ namespace Contra
     {
         internal const string ManifestFileName = "Contra_FileList.txt";
 
+        /// <summary>
+        ///     Install marker: its presence marks the folder as a completed launcher-managed
+        ///     install (bootstrap done), switching later starts into check/repair mode.
+        /// </summary>
+        internal const string MarkerFileName = "Contra_Installed.marker";
+
         private class Entry
         {
             public string Category;
@@ -54,9 +60,35 @@ namespace Contra
 
             try
             {
-                string manifestPath = Path.Combine(MainForm.ResolveLauncherExecutingPath(), ManifestFileName);
+                string baseDir = MainForm.ResolveLauncherExecutingPath();
+                string manifestPath = Path.Combine(baseDir, ManifestFileName);
                 if (!File.Exists(manifestPath))
                     return; // feature dormant until we ship the final file list
+
+                // First-launch bootstrap: without the marker the launcher demands a clean
+                // (empty) folder - it must never bootstrap-install on top of an existing or
+                // unrelated directory. A dirty folder pops a bilingual notice and exits;
+                // once the install completes, the marker switches every later start into
+                // check/repair mode.
+                if (!File.Exists(Path.Combine(baseDir, MarkerFileName)))
+                {
+                    string notClean = FindFirstForeignItem(baseDir);
+                    if (notClean != null)
+                    {
+                        MessageBox.Show(new Form { TopMost = true },
+                            "首次安装要求启动器位于干净（空）的文件夹中。\n" +
+                            "当前文件夹包含： " + notClean + "\n\n" +
+                            "请将 Contra_Launcher.exe 与 Contra_FileList.txt 移入空文件夹后重新运行。\n" +
+                            "已安装的目录（含 Contra_Installed.marker）会自动进入检查修复模式。\n\n" +
+                            "First install requires the launcher to sit in a clean (empty) folder.\n" +
+                            "This folder contains: " + notClean + "\n" +
+                            "Move Contra_Launcher.exe and Contra_FileList.txt into an empty folder and run again.\n" +
+                            "Installed folders (with Contra_Installed.marker) switch to check/repair mode automatically.",
+                            "Contra Launcher", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        Application.Exit();
+                        return;
+                    }
+                }
 
                 List<Entry> entries = ParseManifest(File.ReadAllText(manifestPath));
                 if (entries.Count == 0)
@@ -64,7 +96,6 @@ namespace Contra
 
                 List<string> zhInstalls = InstallLocator.FindZeroHourInstalls();
                 List<string> generalsInstalls = InstallLocator.FindGeneralsInstalls();
-                string baseDir = MainForm.ResolveLauncherExecutingPath();
 
                 foreach (Entry entry in entries)
                 {
@@ -91,6 +122,14 @@ namespace Contra
                         failed.Add(entry);
                     }
                 }
+
+                // The marker is only written once a bootstrap completed without failures; a
+                // failed install retries the whole bootstrap on the next start.
+                if (!File.Exists(Path.Combine(baseDir, MarkerFileName)) && failed.Count == 0)
+                {
+                    try { File.WriteAllText(Path.Combine(baseDir, MarkerFileName), DateTime.Now.ToString("s")); }
+                    catch { }
+                }
             }
             catch
             {
@@ -99,6 +138,30 @@ namespace Contra
 
             if (repaired.Count > 0 || failed.Count > 0)
                 ShowReport(repaired, failed);
+        }
+
+        /// <summary>
+        ///     Returns the first file/subdirectory in the launcher folder that does not belong
+        ///     to the launcher itself, or null when the folder is clean (empty).
+        /// </summary>
+        private static string FindFirstForeignItem(string baseDir)
+        {
+            string[] ownFiles = { ManifestFileName, MarkerFileName, "Contra_Launcher.exe", "Contra_Launcher.pdb" };
+
+            foreach (string file in Directory.GetFiles(baseDir))
+            {
+                string name = Path.GetFileName(file);
+                bool own = false;
+                foreach (string ownName in ownFiles)
+                    if (string.Equals(name, ownName, StringComparison.OrdinalIgnoreCase)) { own = true; break; }
+                if (!own)
+                    return name;
+            }
+
+            foreach (string dir in Directory.GetDirectories(baseDir))
+                return Path.GetFileName(dir) + @"\";
+
+            return null;
         }
 
         private static List<Entry> ParseManifest(string content)
@@ -211,6 +274,9 @@ namespace Contra
                     continue;
 
                 Directory.CreateDirectory(Path.GetDirectoryName(target));
+                if (TryHardLink(source, target))
+                    return true;
+
                 File.Copy(source, target, false);
                 return true;
             }
@@ -220,16 +286,46 @@ namespace Contra
             return false;
         }
 
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+        private static extern bool CreateHardLink(string lpFileName, string lpExistingFileName, IntPtr lpSecurityAttributes);
+
+        /// <summary>
+        ///     Hard-links the file instead of copying when source and target sit on the same
+        ///     volume: zero extra disk space and instant, while staying a normal file for the
+        ///     game. Falls back to File.Copy at the caller when linking fails (different
+        ///     volume, FAT/exFAT, permissions).
+        /// </summary>
+        private static bool TryHardLink(string source, string target)
+        {
+            try
+            {
+                string sourceRoot = Path.GetPathRoot(Path.GetFullPath(source));
+                string targetRoot = Path.GetPathRoot(Path.GetFullPath(target));
+                if (string.IsNullOrEmpty(sourceRoot) || !string.Equals(sourceRoot, targetRoot, StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                return CreateHardLink(target, source, IntPtr.Zero);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static async Task<bool> DownloadFromS3(Entry entry, string target)
         {
             if (string.IsNullOrEmpty(MainForm.S3_BaseUrl))
             {
-                entry.Error = "S3 下载通道未配置 / the S3 download channel is not configured yet";
+                entry.Error = "下载通道未配置 / the download channel is not configured yet";
                 return false;
             }
 
+            // Each category lives in its own folder on R2 (see dl.mayeamiya.dev):
+            // engine files under GeneralsOnlineUnlimited/, mod files under ContraXBeta2Patch1/.
+            string remoteFolder = entry.Category == "ENGINE" ? "GeneralsOnlineUnlimited/" : "ContraXBeta2Patch1/";
+
             // Backslashes become path segments; segments are escaped so spaces survive the URL.
-            string urlPath = entry.RelativePath.Replace('\\', '/');
+            string urlPath = remoteFolder + entry.RelativePath.Replace('\\', '/');
             string[] segments = urlPath.Split('/');
             for (int i = 0; i < segments.Length; i++)
                 segments[i] = Uri.EscapeUriString(segments[i]);

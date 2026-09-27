@@ -119,6 +119,51 @@ namespace Contra
             }
 
             DelTmpChunk();
+
+            // 拒绝 DPI 缩放 for every game executable we ship: register the compatibility
+            // manager's HIGHDPIAWARE layer so Windows never bitmap-scales the fixed-resolution
+            // game UI on high-DPI displays. Written idempotently on each start.
+            ApplyDpiCompatForGameExes();
+        }
+
+        /// <summary>
+        ///     Registers the HIGHDPIAWARE compatibility layer (the "Override high DPI scaling
+        ///     behaviour / 拒绝 DPI 缩放" checkbox) for the game executables. Layers are
+        ///     path-based, so the generals.ctr -> generals.exe swap is covered by pre-writing
+        ///     the entry even when the file is currently renamed away.
+        /// </summary>
+        private void ApplyDpiCompatForGameExes()
+        {
+            string[] exeNames =
+            {
+                "GeneralsOnlineZH_Unlimited.exe", "GeneralsOnlineZH_60.exe", "GeneralsOnlineZH.exe",
+                "generals.exe", "generals.ctr", "EAC_LaunchGeneralsOnline.exe",
+                "WorldBuilder.exe", "WorldBuilder_Ctr.exe",
+            };
+
+            try
+            {
+                using (RegistryKey layers = Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers", true)
+                    ?? Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers"))
+                {
+                    if (layers == null)
+                        return;
+
+                    foreach (string name in exeNames)
+                    {
+                        string exePath = Path.GetFullPath(Path.Combine(launcherExecutingPath, name));
+                        if (string.Equals(layers.GetValue(exePath) as string, "~ HIGHDPIAWARE", StringComparison.OrdinalIgnoreCase))
+                            continue;
+                        layers.SetValue(exePath, "~ HIGHDPIAWARE");
+                    }
+                }
+            }
+            catch
+            {
+                // Compat layers are a convenience; a locked or redirected registry must not
+                // keep the launcher from starting.
+            }
         }
 
         //**********DRAG FORM CODE START**********
