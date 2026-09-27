@@ -147,6 +147,19 @@ namespace Contra
                     if (File.Exists(target) || File.Exists(AlternateCtrBigPath(target)))
                         continue;
 
+                    // Special case: the two music override packs (MusicEnhanced /
+                    // MusicTheScore) get an extra "!" prefix on start - they must load
+                    // before the base audio to override it. Presence accepts the fixed
+                    // double-! name too, or the pass would re-download them every start.
+                    bool isMusicOverride = entry.RelativePath.IndexOf("_MusicEnhanced.", StringComparison.OrdinalIgnoreCase) >= 0
+                        || entry.RelativePath.IndexOf("_MusicTheScore.", StringComparison.OrdinalIgnoreCase) >= 0;
+                    if (isMusicOverride && entry.RelativePath.StartsWith("!"))
+                    {
+                        string fixedTarget = "!" + target; // single -> double "!"
+                        if (File.Exists(fixedTarget) || File.Exists(AlternateCtrBigPath(fixedTarget)))
+                            continue;
+                    }
+
                     string[] head = await HeadRemote(entry.Url);
                     downloads.Add(new KeyValuePair<RemoteEntry, long>(entry, head != null ? long.Parse(head[1]) : 0));
                 }
