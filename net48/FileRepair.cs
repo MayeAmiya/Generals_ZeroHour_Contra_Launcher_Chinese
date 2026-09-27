@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -106,76 +107,142 @@ namespace Contra
                 List<string> zhInstalls = InstallLocator.FindZeroHourInstalls();
                 List<string> generalsInstalls = InstallLocator.FindGeneralsInstalls();
 
-                // Phase 1: base-game content from local installs (hard link / copy).
-                RestoreFromInstalls(baseDir, BuiltinFileLists.ZhGeneralsFiles, generalsInstalls, "Generals", repaired, failed);
-                RestoreFromInstalls(baseDir, BuiltinFileLists.ZeroHourFiles, zhInstalls, "Zero Hour", repaired, failed);
+                int totalFiles = BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length;
+                FileRepairProgressForm progress = new FileRepairProgressForm(totalFiles);
+                progress.Show(owner);
 
-                // Phase 2: online content (engine, mod, GenTool) from the R2 index.
-                List<RemoteEntry> remote = await LoadRemoteIndex();
-                if (remote.Count > 0)
+                try
                 {
-                    Dictionary<string, string> cache = LoadRemoteCache(baseDir);
-                    bool cacheDirty = false;
+                    int done = 0;
 
-                    foreach (RemoteEntry entry in remote)
+                    // Phase 1a: base Generals content into the ZH_Generals subfolder. Steam
+                    // installs are mapped with a single directory junction; other installs
+                    // get the folder created and per-file hard links / copies.
+                    progress.SetPhase("正在从本机安装恢复将军原版文件 / restoring base Generals files");
+                    RestoreZhGenerals(baseDir, generalsInstalls, progress, repaired, failed, ref done);
+
+                    // Phase 1b: Zero Hour content straight into the launcher directory.
+                    progress.SetPhase("正在从本机安装恢复绝命时刻文件 / restoring Zero Hour files");
+                    RestoreFromInstalls(baseDir, BuiltinFileLists.ZeroHourFiles, zhInstalls, "Zero Hour",
+                        progress, repaired, failed, ref done);
+
+                    // Steam installs additionally provide the DRM stubs the game needs:
+                    // map steam_api.dll / steam_appid.txt into the launcher directory too.
+                    RestoreSteamExtras(baseDir, zhInstalls, repaired, failed);
+
+                    // Phase 2: online content (engine, mod, GenTool) from the R2 index.
+                    List<RemoteEntry> remote = await LoadRemoteIndex();
+                    progress.SetPhase("正在同步在线文件 / syncing online files");
+                    if (remote.Count > 0)
                     {
-                        try
+                        Dictionary<string, string> cache = LoadRemoteCache(baseDir);
+                        bool cacheDirty = false;
+
+                        foreach (RemoteEntry entry in remote)
                         {
-                            string target = Path.Combine(baseDir, entry.RelativePath.Replace('/', '\\'));
-                            string cacheKey = entry.Url;
-
-                            if (File.Exists(target))
+                            try
                             {
-                                string[] current = await HeadRemote(entry.Url);
-                                if (current == null)
-                                    continue; // index unreachable for this file; keep what we have
+                                progress.SetFile(entry.RelativePath, 0);
+                                progress.ClearStats();
 
-                                string cached;
-                                cache.TryGetValue(cacheKey, out cached);
+                                string target = Path.Combine(baseDir, entry.RelativePath.Replace('/', '\\'));
+                                string cacheKey = entry.Url;
 
-                                if (cached != null && cached == current[0] + "\t" + current[1])
-                                    continue; // present and still the same version
-
-                                if (cached == null)
+                                if (File.Exists(target))
                                 {
-                                    // Pre-existing file with no download history: accept it and
-                                    // start tracking from here on.
-                                    cache[cacheKey] = current[0] + "\t" + current[1];
-                                    cacheDirty = true;
-                                    continue;
+                                    string[] current = await HeadRemote(entry.Url);
+                                    if (current == null)
+                                        continue; // index unreachable for this file; keep what we have
+
+                                    string cached;
+                                    cache.TryGetValue(cacheKey, out cached);
+
+                                    if (cached != null && cached == current[0] + "\t" + current[1])
+                                    {
+                                        // present and still the same version
+                                        done++;
+                                        progress.SetOverall(done, totalFiles);
+                                        continue;
+                                    }
+
+                                    if (cached == null)
+                                    {
+                                        // Pre-existing file with no download history: accept it and
+                                        // start tracking from here on.
+                                        cache[cacheKey] = current[0] + "\t" + current[1];
+                                        cacheDirty = true;
+                                        done++;
+                                        progress.SetOverall(done, totalFiles);
+                                        continue;
+                                    }
+
+                                    // Cached version differs from the index: outdated, re-fetch below.
+                                    progress.SetPhase("正在更新在线文件 / updating outdated files");
                                 }
 
-                                // Cached version differs from the index: outdated, re-fetch below.
+                                Directory.CreateDirectory(Path.GetDirectoryName(target));
+
+                                Stopwatch downloadWatch = Stopwatch.StartNew();
+                                long lastReported = 0;
+                                await owner.DownloadFile(entry.Url, target, TimeSpan.FromMinutes(30),
+                                    CancellationToken.None, (received, total) =>
+                                    {
+                                        if (total <= 0)
+                                            return;
+
+                                        // ~1s smoothing window so the speed readout stays readable.
+                                        double elapsed = downloadWatch.Elapsed.TotalSeconds;
+                                        double speed = elapsed > 0.3 ? received / elapsed : 0;
+                                        long remaining = total - received;
+                                        string eta = speed > 1 ? FormatDuration(remaining / speed) : "--:--";
+                                        progress.SetFile(entry.RelativePath,
+                                            total > 0 ? (int)Math.Min(100, received * 100 / total) : 0);
+                                        progress.SetStats(received, total, speed, eta);
+                                        lastReported = received;
+                                    });
+
+                                string[] after = await HeadRemote(entry.Url);
+                                if (after != null)
+                                {
+                                    cache[cacheKey] = after[0] + "\t" + after[1];
+                                    cacheDirty = true;
+                                }
+
+                                repaired.Add(new RepairResult { Path = entry.RelativePath });
+                                done++;
+                                progress.SetOverall(done, totalFiles);
                             }
-
-                            Directory.CreateDirectory(Path.GetDirectoryName(target));
-                            await owner.DownloadFile(entry.Url, target, TimeSpan.FromMinutes(30), CancellationToken.None);
-
-                            string[] after = await HeadRemote(entry.Url);
-                            if (after != null)
+                            catch (Exception ex)
                             {
-                                cache[cacheKey] = after[0] + "\t" + after[1];
-                                cacheDirty = true;
+                                failed.Add(new RepairResult { Path = entry.RelativePath, Error = ex.Message });
+                                done++;
+                                progress.SetOverall(done, totalFiles);
                             }
+                        }
 
-                            repaired.Add(new RepairResult { Path = entry.RelativePath });
-                        }
-                        catch (Exception ex)
-                        {
-                            failed.Add(new RepairResult { Path = entry.RelativePath, Error = ex.Message });
-                        }
+                        if (cacheDirty)
+                            SaveRemoteCache(baseDir, cache);
                     }
 
-                    if (cacheDirty)
-                        SaveRemoteCache(baseDir, cache);
-                }
+                    // The marker is only written once a bootstrap completed without failures; a
+                    // failed install retries the whole bootstrap on the next start.
+                    if (!File.Exists(Path.Combine(baseDir, MarkerFileName)) && failed.Count == 0)
+                    {
+                        try { File.WriteAllText(Path.Combine(baseDir, MarkerFileName), DateTime.Now.ToString("s")); }
+                        catch { }
+                    }
 
-                // The marker is only written once a bootstrap completed without failures; a
-                // failed install retries the whole bootstrap on the next start.
-                if (!File.Exists(Path.Combine(baseDir, MarkerFileName)) && failed.Count == 0)
+                    // Success notice lives in the progress window itself - no extra dialog.
+                    if (failed.Count == 0 && repaired.Count > 0)
+                        progress.ShowCompleteThenClose(1800);
+                }
+                finally
                 {
-                    try { File.WriteAllText(Path.Combine(baseDir, MarkerFileName), DateTime.Now.ToString("s")); }
-                    catch { }
+                    if (!progress.AutoClosing)
+                    {
+                        progress.Close();
+                        progress.Dispose();
+                    }
                 }
             }
             catch
@@ -183,34 +250,216 @@ namespace Contra
                 // A broken index or IO hiccup must never keep the launcher from starting.
             }
 
-            if (repaired.Count > 0 || failed.Count > 0)
-                ShowReport(repaired, failed);
+            if (failed.Count > 0)
+                ShowFailures(failed);
+        }
+
+        private static string FormatDuration(double seconds)
+        {
+            TimeSpan span = TimeSpan.FromSeconds(Math.Max(0, Math.Round(seconds)));
+            if (span.TotalHours >= 1)
+                return ((int)span.TotalHours).ToString("00") + ":" + span.Minutes.ToString("00") + ":" + span.Seconds.ToString("00");
+            return span.Minutes.ToString("00") + ":" + span.Seconds.ToString("00");
         }
 
         // ---------------------------------------------------------------------
         // Phase 1: base-game content from registry-located local installs
         // ---------------------------------------------------------------------
 
+        /// <summary>
+        ///     Base Generals content must land inside the launcher's ZH_Generals subfolder
+        ///     (the engine reads Generals content from there). Steam installs are mapped as
+        ///     a whole with a directory junction when possible; every other install gets a
+        ///     real ZH_Generals folder with per-file hard links / copies. Failure to provide
+        ///     a file is reported per entry.
+        /// </summary>
+        private static void RestoreZhGenerals(string baseDir, List<string> installs,
+            FileRepairProgressForm progress, List<RepairResult> repaired, List<RepairResult> failed, ref int done)
+        {
+            string targetBase = Path.Combine(baseDir, "ZH_Generals");
+
+            // A Steam install can be mapped directly: one junction covers every file.
+            if (!Directory.Exists(targetBase))
+            {
+                foreach (string install in installs)
+                {
+                    if (!IsSteamInstall(install))
+                        continue;
+
+                    if (TryCreateJunction(targetBase, install))
+                    {
+                        repaired.Add(new RepairResult
+                        {
+                            Path = "ZH_Generals -> " + install + " (junction)"
+                        });
+                        done++;
+                        progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
+                        return; // everything below the junction exists now
+                    }
+                }
+            }
+            else if (IsReparsePoint(targetBase))
+            {
+                return; // already mapped to an install
+            }
+
+            foreach (string relativePath in BuiltinFileLists.ZhGeneralsFiles)
+            {
+                try
+                {
+                    progress.SetFile("ZH_Generals\\" + relativePath, 0);
+
+                    string target = Path.Combine(targetBase, relativePath.Replace('/', '\\'));
+                    if (File.Exists(target))
+                    {
+                        done++;
+                        progress.SetFile("ZH_Generals\\" + relativePath, 100);
+                        progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
+                        continue;
+                    }
+
+                    string error;
+                    if (TryRestoreFromInstalls(relativePath, target, installs, "Generals", out error))
+                        repaired.Add(new RepairResult { Path = "ZH_Generals\\" + relativePath });
+                    else
+                        failed.Add(new RepairResult { Path = "ZH_Generals\\" + relativePath, Error = error });
+
+                    done++;
+                    progress.SetFile("ZH_Generals\\" + relativePath, 100);
+                    progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
+                }
+                catch (Exception ex)
+                {
+                    failed.Add(new RepairResult { Path = "ZH_Generals\\" + relativePath, Error = ex.Message });
+                    done++;
+                    progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
+                }
+            }
+        }
+
+        /// <summary>Steam depots live under .../steamapps/...; those map, retail does not.</summary>
+        private static bool IsSteamInstall(string installPath)
+        {
+            return installPath != null && installPath.ToLowerInvariant().Contains("steamapps");
+        }
+
+        /// <summary>
+        ///     Steam installs carry the DRM stubs next to the game exe; when restoring from a
+        ///     Steam install they are mapped into the launcher directory as well (hard link
+        ///     first, copy fallback). Not part of the progress total - they are a side effect.
+        /// </summary>
+        private static void RestoreSteamExtras(string baseDir, List<string> zhInstalls,
+            List<RepairResult> repaired, List<RepairResult> failed)
+        {
+            string[] steamExtras = { "steam_api.dll", "steam_appid.txt" };
+
+            foreach (string fileName in steamExtras)
+            {
+                try
+                {
+                    string target = Path.Combine(baseDir, fileName);
+                    if (File.Exists(target))
+                        continue;
+
+                    foreach (string install in zhInstalls)
+                    {
+                        if (!IsSteamInstall(install))
+                            continue;
+
+                        string source = Path.Combine(install, fileName);
+                        if (!File.Exists(source))
+                            continue;
+
+                        if (TryHardLink(source, target))
+                            repaired.Add(new RepairResult { Path = fileName + " (steam link)" });
+                        else
+                        {
+                            File.Copy(source, target, false);
+                            repaired.Add(new RepairResult { Path = fileName + " (steam copy)" });
+                        }
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failed.Add(new RepairResult { Path = fileName, Error = ex.Message });
+                }
+            }
+        }
+
+        /// <summary>True when the directory is a junction/symlink rather than a real folder.</summary>
+        private static bool IsReparsePoint(string path)
+        {
+            try
+            {
+                return new DirectoryInfo(path).Attributes.HasFlag(FileAttributes.ReparsePoint);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        ///     Creates a directory junction (no admin rights needed) via mklink /J. Returns
+        ///     false when the shell refuses, so the caller can fall back to per-file links.
+        /// </summary>
+        private static bool TryCreateJunction(string junctionPath, string targetDir)
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo("cmd.exe",
+                    "/c mklink /J \"" + junctionPath + "\" \"" + targetDir + "\"");
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+
+                using (Process process = Process.Start(psi))
+                {
+                    if (process != null)
+                        process.WaitForExit();
+                    return Directory.Exists(junctionPath);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static void RestoreFromInstalls(string baseDir, string[] files, List<string> installs,
-            string gameName, List<RepairResult> repaired, List<RepairResult> failed)
+            string gameName, FileRepairProgressForm progress, List<RepairResult> repaired,
+            List<RepairResult> failed, ref int done)
         {
             foreach (string relativePath in files)
             {
                 try
                 {
+                    progress.SetFile(relativePath, 0);
+
                     string target = Path.Combine(baseDir, relativePath.Replace('/', '\\'));
                     if (File.Exists(target))
+                    {
+                        done++;
+                        progress.SetFile(relativePath, 100);
+                        progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
                         continue;
+                    }
 
                     string error;
                     if (TryRestoreFromInstalls(relativePath, target, installs, gameName, out error))
                         repaired.Add(new RepairResult { Path = relativePath });
                     else
                         failed.Add(new RepairResult { Path = relativePath, Error = error });
+
+                    done++;
+                    progress.SetFile(relativePath, 100);
+                    progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
                 }
                 catch (Exception ex)
                 {
                     failed.Add(new RepairResult { Path = relativePath, Error = ex.Message });
+                    done++;
+                    progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
                 }
             }
         }
@@ -409,33 +658,30 @@ namespace Contra
         }
 
         // ---------------------------------------------------------------------
-        // Report
+        // Failure report (success only shows in the progress window - no big dialog)
         // ---------------------------------------------------------------------
 
-        private static void ShowReport(List<RepairResult> repaired, List<RepairResult> failed)
+        private static void ShowFailures(List<RepairResult> failed)
         {
-            string text = "";
+            string text = "以下缺失文件无法自动修复 (These missing files could not be restored):\n\n";
 
-            if (repaired.Count > 0)
+            int shown = 0;
+            foreach (RepairResult result in failed)
             {
-                text += "已修复缺失文件 (Missing files were restored):\n\n";
-                foreach (RepairResult result in repaired)
-                    text += "  [+] " + result.Path + "\n";
-                text += "\n";
+                if (shown++ >= 15)
+                {
+                    text += "  ... 共 / total " + failed.Count + " 个\n";
+                    break;
+                }
+                text += "  [x] " + result.Path + "\n      " + result.Error + "\n";
             }
 
-            if (failed.Count > 0)
-            {
-                text += "以下缺失文件无法自动修复 (These missing files could not be restored):\n\n";
-                foreach (RepairResult result in failed)
-                    text += "  [x] " + result.Path + "\n      " + result.Error + "\n";
-                text += "\n请检查注册表中的游戏安装或网络连接。(Check your game install registration or network connection.)";
-            }
+            text += "\n请检查注册表中的游戏安装或网络连接。(Check your game install registration or network connection.)";
 
             try
             {
                 MessageBox.Show(new Form { TopMost = true }, text, "Contra Launcher",
-                    MessageBoxButtons.OK, failed.Count > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             catch
             {

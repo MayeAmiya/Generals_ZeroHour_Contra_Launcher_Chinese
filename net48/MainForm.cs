@@ -1025,7 +1025,7 @@ namespace Contra
             return Tuple.Create(-reValue.Item1, reValue.Item2);
         }
 
-        public async Task DownloadFile(string url, string outPath, TimeSpan timeout, CancellationToken cancellationToken = default)
+        public async Task DownloadFile(string url, string outPath, TimeSpan timeout, CancellationToken cancellationToken = default, Action<long, long> progress = null)
         {
             // Use the default timeout set on the static HttpClient
             var response = await httpclient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -1054,6 +1054,8 @@ namespace Contra
                         await fileStream.WriteAsync(data, 0, bytesRead);
                         totalBytesRead += bytesRead;
                         readCount += 1;
+                        if (progress != null)
+                            progress(totalBytesRead, contentLength);
                         if (readCount % 100 == 0)
                         {
                             PatchDLProgressBar.Value = Convert.ToInt32((double)totalBytesRead / contentLength * 100);

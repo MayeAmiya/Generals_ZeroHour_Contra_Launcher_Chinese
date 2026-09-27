@@ -96,6 +96,9 @@
   <ItemGroup>
     <Compile Include="BuiltinFileLists.cs" />
     <Compile Include="FileRepair.cs" />
+    <Compile Include="FileRepairProgressForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Globals.cs" />
     <Compile Include="InstallLocator.cs" />
     <Compile Include="MainForm.cs">
