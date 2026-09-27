@@ -12,9 +12,10 @@
 	<GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <PublishReadyToRun>false</PublishReadyToRun>
-    <!-- Folder publish instead of the single-file bundle: no 100MB monolith, faster startup, and files the
-         launcher's own zip updater can replace individually. -->
-    <PublishSingleFile>false</PublishSingleFile>
+    <!-- Single-file bundle: the managed dll, deps.json and runtimeconfig.json are embedded into
+         Contra_Launcher.exe, so distribution stays a single portable exe (framework-dependent;
+         the target machine still needs the .NET 10 Desktop Runtime installed). -->
+    <PublishSingleFile>true</PublishSingleFile>
     <!--<PublishTrimmed>true</PublishTrimmed>-->
     <RuntimeIdentifier>win-x86</RuntimeIdentifier>
     <PlatformTarget>AnyCPU</PlatformTarget>
