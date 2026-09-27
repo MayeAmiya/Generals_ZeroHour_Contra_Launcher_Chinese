@@ -236,9 +236,14 @@ namespace Contra
                             catch { }
                         }
 
-                        // Success notice lives in the progress window itself - no extra dialog.
+                        // The sync changed the directory: restart the launcher right away so
+                        // every piece of UI re-reads the freshly restored files - no user
+                        // interaction in between. (A restart without repairs would loop.)
                         if (repaired.Count > 0 && failed.Count == 0)
-                            progress.ShowCompleteThenClose(1800);
+                        {
+                            Application.Restart();
+                            return;
+                        }
                     }
                 }
                 finally

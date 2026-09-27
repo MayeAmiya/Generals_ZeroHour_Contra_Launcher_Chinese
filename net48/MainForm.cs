@@ -2794,22 +2794,9 @@ namespace Contra
             // TheSuperHackers @feature Manifest-driven install repair: restore missing base-game
             // files from the registry-located retail/Steam installs and download missing engine
             // or mod files from our S3 bucket, before the user can launch anything broken.
+            // When the pass changed anything it restarts the launcher by itself, so every
+            // file-presence-dependent piece of UI re-reads the restored files.
             await FileRepair.RunAsync(this);
-
-            // Post-repair refresh: re-apply the current language so everything that depends
-            // on file presence (version label with Patch 1, mod warnings) reflects the files
-            // the repair just restored. Re-firing the radio re-runs the full text/image pass.
-            RadioButton activeLanguage = RadioFlag_GB.Checked ? RadioFlag_GB
-                : RadioFlag_RU.Checked ? RadioFlag_RU
-                : RadioFlag_UA.Checked ? RadioFlag_UA
-                : RadioFlag_BG.Checked ? RadioFlag_BG
-                : RadioFlag_DE.Checked ? RadioFlag_DE
-                : null;
-            if (activeLanguage != null)
-            {
-                activeLanguage.Checked = false;
-                activeLanguage.Checked = true;
-            }
 
             // Make 2 copies of Options.ini, name them Options_ZH.ini and Options_CTR.ini
             if (File.Exists(Globals.myDocPath + "Options.ini") && !File.Exists(Globals.myDocPath + "Options_ZH.ini") && !File.Exists(Globals.myDocPath + "Options_CTR.ini"))

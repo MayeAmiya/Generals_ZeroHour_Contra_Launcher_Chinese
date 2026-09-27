@@ -46,13 +46,13 @@ namespace Contra
             DoubleBuffered = true;
             Text = "Contra Launcher";
             BackColor = Color.FromArgb(30, 30, 46);
-            Size = new Size(500, 200);
+            Size = new Size(660, 246);
 
             titleLabel = new Label
             {
                 AutoSize = false,
                 Location = new Point(14, 12),
-                Size = new Size(460, 24),
+                Size = new Size(620, 24),
                 ForeColor = Color.White,
                 Font = new Font("Calibri", 15F, GraphicsUnit.Pixel),
                 Text = chinese ? "正在检查文件" : "Checking files",
@@ -61,7 +61,7 @@ namespace Contra
             {
                 AutoSize = false,
                 Location = new Point(14, 44),
-                Size = new Size(460, 20),
+                Size = new Size(620, 20),
                 ForeColor = Color.FromArgb(200, 200, 210),
                 Font = new Font("Calibri", 12F, GraphicsUnit.Pixel),
                 Text = "",
@@ -69,13 +69,13 @@ namespace Contra
             fileBar = new ProgressBar
             {
                 Location = new Point(14, 68),
-                Size = new Size(460, 18),
+                Size = new Size(620, 18),
             };
             statLabel = new Label
             {
                 AutoSize = false,
                 Location = new Point(14, 92),
-                Size = new Size(460, 20),
+                Size = new Size(620, 20),
                 ForeColor = Color.FromArgb(160, 220, 160),
                 Font = new Font("Calibri", 12F, GraphicsUnit.Pixel),
                 Text = "",
@@ -84,15 +84,15 @@ namespace Contra
             {
                 AutoSize = false,
                 Location = new Point(14, 122),
-                Size = new Size(370, 20),
+                Size = new Size(620, 20),
                 ForeColor = Color.White,
                 Font = new Font("Calibri", 13F, GraphicsUnit.Pixel),
                 Text = "",
             };
             cancelButton = new Button
             {
-                Location = new Point(392, 118),
-                Size = new Size(82, 28),
+                Location = new Point(14, 152),
+                Size = new Size(120, 30),
                 Text = chinese ? "取消" : "Cancel",
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(60, 60, 80),
