@@ -1,0 +1,33 @@
+# ============================================================
+# Contra 启动器安装校验清单 / Contra launcher install manifest
+# ============================================================
+# 放在启动器 exe 同目录，每行一条： 分类|相对路径
+# Place next to Contra_Launcher.exe, one entry per line: CATEGORY|relative\path
+#   - 空行与 # 开头的行忽略 / blank lines and # comments are ignored
+#   - 相对路径基于启动器目录，正反斜杠均可 / relative to the launcher dir, / or \ both fine
+#
+# 分类 / categories（缺文件时的补全方式 / how a missing file is restored）:
+#   ZH_GENERALS  原版将军内容 —— 从注册表找到的 Generals 安装目录拷贝
+#                (base Generals content, copied from the registry-located Generals install:
+#                 零售 EA App / Steam / 十周年版 The First Decade)
+#   ZH           绝命时刻内容 —— 从注册表找到的绝命时刻安装目录拷贝，
+#                注册表找不到或目录里也没有该文件则报错
+#                (Zero Hour content, copied from the registry-located Zero Hour install;
+#                 an error is reported when nothing can provide the file)
+#   ENGINE       我们新编译的将军在线引擎文件 —— 缺失时从 S3 下载
+#                (our compiled GeneralsOnline engine build, downloaded from S3)
+#   MOD          游戏 MOD 文件 —— 缺失时从 S3 下载
+#                (Contra mod content, downloaded from S3)
+#
+# S3 地址在 MainForm.cs 的 S3_BaseUrl 常量中配置；未配置时 ENGINE/MOD 无法下载，
+# 会在报告中提示。启动器自身通过 S3 上的 Versions_X.txt 做版本自更新。
+# The S3 base URL lives in MainForm.S3_BaseUrl; launcher self-update reads
+# Versions_X.txt from the same bucket.
+#
+# 示例（全部注释中，清单未整理完成前功能保持休眠）:
+# Examples (all commented - the feature stays dormant until the final list is filled in):
+#
+# ZH|data\INI.ini
+# ZH_GENERALS|Maps\Generals Maps
+# ENGINE|GeneralsOnlineZH_Unlimited.exe
+# MOD|!!!!Contra009Final_Patch3.big

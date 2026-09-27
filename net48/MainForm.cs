@@ -154,15 +154,19 @@ namespace Contra
 
         string currentFileLabel;
         string newVersion, genToolFileName = "";
-        string versions_url = "https://raw.githubusercontent.com/ContraMod/Launcher/master/Versions_X.txt";
-        string launcher_url = "https://github.com/ContraMod/Launcher/releases/download/";
+        // TheSuperHackers @feature All update traffic moves to our own S3 bucket. Paste the
+        // bucket's public base URL here (it must end with '/'); while it stays empty the
+        // self-update and repair download channels stay dormant and the launcher runs on
+        // locally bundled files only.
+        internal const string S3_BaseUrl = ""; // e.g. "https://contra-update-bucket.s3.amazonaws.com/"
+        string versions_url = string.IsNullOrEmpty(S3_BaseUrl) ? null : S3_BaseUrl + "Versions_X.txt";
+        string launcher_url = S3_BaseUrl;
         string patch_url = "http://contra.cncguild.net/Downloads/";
         // TheSuperHackers @tweak This launcher is a standalone fork with its own distribution
-        // channel. The built-in self-update contacts the official ContraMod servers and would
-        // overwrite this build with the official launcher if it ever ran - updates are handled
-        // by shipping new builds instead. UpdateLogic() stays disabled and the exit-time
-        // exe-swap cleanup is skipped.
-        internal const bool EnableSelfUpdate = false;
+        // channel. Self-update downloads Contra_Launcher.zip from our own S3 bucket (see
+        // S3_BaseUrl) and is dormant until that bucket is configured; the exit-time exe-swap
+        // cleanup below is gated on the same flag.
+        internal const bool EnableSelfUpdate = true;
 
         // TheSuperHackers @bugfix In single-file published builds Assembly.Location returns an
         // empty string and Path.GetDirectoryName("") returns null, which made every
@@ -171,7 +175,7 @@ namespace Contra
         // which keep working in both single-file and framework-dependent folder layouts.
         static string launcherExecutingPath = ResolveLauncherExecutingPath();
 
-        private static string ResolveLauncherExecutingPath()
+        internal static string ResolveLauncherExecutingPath()
         {
             string dir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             if (string.IsNullOrEmpty(dir))
@@ -342,6 +346,10 @@ namespace Contra
 
         private async Task UpdateLogic()
         {
+            // TheSuperHackers @feature Self-update is served from our own S3 channel; until the
+            // bucket URL is configured the whole check is skipped silently.
+            if (string.IsNullOrEmpty(versions_url)) return;
+
             await httpSemaphore.WaitAsync();
             try
             {
@@ -379,6 +387,8 @@ namespace Contra
 
         private async void RetrieveMOTD()
         {
+            if (string.IsNullOrEmpty(versions_url)) return;
+
             await httpSemaphore.WaitAsync();
             try
             {
@@ -2410,17 +2420,22 @@ namespace Contra
         private async void Form1_Shown(object sender, EventArgs e)
         {
             // Temporary hack so update runs on main thread, versionsTXT should be rewritten to be async if possible
-            // TheSuperHackers @feature Auto-update disabled: the launcher no longer checks for or
-            // downloads launcher updates on startup. Version bumps and distribution are manual.
-            //try
-            //{
-            //    await UpdateLogic();
-            //}
-            //catch (Exception ex)
-            //{
-            //    // Log the exception but don't show it to avoid interrupting the user
-            //    System.Diagnostics.Debug.WriteLine($"UpdateLogic error: {ex.Message}");
-            //}
+            // TheSuperHackers @feature Auto-update is back, served from our own S3 channel
+            // (see S3_BaseUrl): the launcher fetches Versions_X.txt, compares versions, downloads
+            // Contra_Launcher.zip and restarts when a newer build exists. Dormant until the
+            // bucket URL is filled in.
+            if (EnableSelfUpdate)
+            {
+                try
+                {
+                    await UpdateLogic();
+                }
+                catch (Exception ex)
+                {
+                    // Log the exception but don't show it to avoid interrupting the user
+                    System.Diagnostics.Debug.WriteLine($"UpdateLogic error: {ex.Message}");
+                }
+            }
 
             string gtHash = null;
             try
@@ -2506,6 +2521,11 @@ namespace Contra
             // Generate the GO client's settings.json (and its GeneralsOnlineData folder) when
             // missing, so a fresh machine starts with a valid client-defaults file too.
             OptionsForm.EnsureGoSettingsJson();
+
+            // TheSuperHackers @feature Manifest-driven install repair: restore missing base-game
+            // files from the registry-located retail/Steam installs and download missing engine
+            // or mod files from our S3 bucket, before the user can launch anything broken.
+            await FileRepair.RunAsync();
 
             // Make 2 copies of Options.ini, name them Options_ZH.ini and Options_CTR.ini
             if (File.Exists(Globals.myDocPath + "Options.ini") && !File.Exists(Globals.myDocPath + "Options_ZH.ini") && !File.Exists(Globals.myDocPath + "Options_CTR.ini"))
