@@ -277,12 +277,114 @@ namespace Contra
         // ---------------------------------------------------------------------
 
         /// <summary>
-        ///     Base Generals content must land inside the launcher's ZH_Generals subfolder
-        ///     (the engine reads Generals content from there). Steam installs are mapped as
-        ///     a whole with a directory junction when possible; every other install gets a
-        ///     real ZH_Generals folder with per-file hard links / copies. Failure to provide
-        ///     a file is reported per entry.
+        ///     Language tokens EA shipped the games in. Files like SpeechChineseZH.big /
+        ///     SpeechEnglishZH.big or AudioChinese.big / AudioEnglish.big are the same slot
+        ///     with a different language pack - the installer's language decides the name, so
+        ///     presence and restore are matched language-agnostically (one of them must exist).
         /// </summary>
+        private static readonly string[] LanguageTokens =
+        {
+            "Chinese", "English", "Russian", "French", "German", "Italian", "Spanish",
+            "Korean", "Japanese", "Polish", "Czech", "Turkish", "Portuguese", "Dutch", "Hungarian",
+        };
+
+        /// <summary>The language token inside a file name, or null when it has none.</summary>
+        private static string LanguageToken(string fileName)
+        {
+            foreach (string token in LanguageTokens)
+                if (fileName.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return token;
+            return null;
+        }
+
+        /// <summary>
+        ///     True when any language variant of the file exists in the directory: the
+        ///     embedded name's language token is swapped for every known language and each
+        ///     exact candidate is probed (never a wildcard - "*.big" would match everything).
+        /// </summary>
+        private static bool LanguageVariantPresent(string directory, string fileName)
+        {
+            string token = LanguageToken(fileName);
+            if (token == null)
+                return false;
+
+            int index = fileName.IndexOf(token, StringComparison.OrdinalIgnoreCase);
+            foreach (string candidate in LanguageTokens)
+            {
+                string name = fileName.Substring(0, index) + candidate + fileName.Substring(index + token.Length);
+                if (File.Exists(Path.Combine(directory, name)))
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        ///     Restores a file from any of the local installs. Language-variant files are
+        ///     looked up across all known language names and linked/copied UNDER THE SOURCE'S
+        ///     OWN NAME (an English install provides English.big, never renamed to Chinese.big).
+        ///     Same-volume sources are hard linked, others copied.
+        /// </summary>
+        private static bool TryRestoreFromInstalls(string relativePath, string target, List<string> installs,
+            string gameName, out string error)
+        {
+            if (installs.Count == 0)
+            {
+                error = L("注册表中未找到 " + gameName + " 安装位置",
+                          "no " + gameName + " install found in the registry");
+                return false;
+            }
+
+            string targetDir = Path.GetDirectoryName(target);
+            string fileName = Path.GetFileName(target);
+            string languageToken = LanguageToken(fileName);
+
+            foreach (string install in installs)
+            {
+                string installRelativeDir = Path.GetDirectoryName(relativePath.Replace('/', '\\')) ?? "";
+                string sourceDir = Path.Combine(install, installRelativeDir);
+
+                if (languageToken != null)
+                {
+                    // Language pack: accept whatever variant the local install carries and
+                    // keep its own file name.
+                    int index = fileName.IndexOf(languageToken, StringComparison.OrdinalIgnoreCase);
+                    foreach (string candidate in LanguageTokens)
+                    {
+                        string candidateName = fileName.Substring(0, index) + candidate
+                            + fileName.Substring(index + languageToken.Length);
+                        string source = Path.Combine(sourceDir, candidateName);
+                        if (!File.Exists(source))
+                            continue;
+
+                        Directory.CreateDirectory(targetDir);
+                        string finalTarget = Path.Combine(targetDir, candidateName);
+                        if (!TryHardLink(source, finalTarget))
+                            File.Copy(source, finalTarget, false);
+                        error = null;
+                        return true;
+                    }
+                }
+                else
+                {
+                    string source = Path.Combine(install, relativePath.Replace('/', '\\'));
+                    if (!File.Exists(source))
+                        continue;
+
+                    Directory.CreateDirectory(targetDir);
+                    if (!TryHardLink(source, target))
+                        File.Copy(source, target, false);
+                    error = null;
+                    return true;
+                }
+            }
+
+            error = languageToken != null
+                ? L("注册表给出的 " + gameName + " 安装中没有任何语言版本的该文件",
+                    "none of the registry-located " + gameName + " installs carries any language variant of this file")
+                : L("注册表给出的 " + gameName + " 目录中也没有该文件",
+                    "not found in any registry-located " + gameName + " install");
+            return false;
+        }
         private static void RestoreZhGenerals(string baseDir, List<string> installs,
             FileRepairProgressForm progress, List<RepairResult> repaired, List<RepairResult> failed, ref int done)
         {
@@ -320,7 +422,7 @@ namespace Contra
                     progress.SetFile("ZH_Generals\\" + relativePath, 0);
 
                     string target = Path.Combine(targetBase, relativePath.Replace('/', '\\'));
-                    if (File.Exists(target))
+                    if (File.Exists(target) || LanguageVariantPresent(targetBase, Path.GetFileName(target)))
                     {
                         done++;
                         progress.SetFile("ZH_Generals\\" + relativePath, 100);
@@ -447,7 +549,7 @@ namespace Contra
                     progress.SetFile(relativePath, 0);
 
                     string target = Path.Combine(baseDir, relativePath.Replace('/', '\\'));
-                    if (File.Exists(target))
+                    if (File.Exists(target) || LanguageVariantPresent(baseDir, Path.GetFileName(target)))
                     {
                         done++;
                         progress.SetFile(relativePath, 100);
@@ -472,39 +574,6 @@ namespace Contra
                     progress.SetOverall(done);
                 }
             }
-        }
-
-        private static bool TryRestoreFromInstalls(string relativePath, string target, List<string> installs,
-            string gameName, out string error)
-        {
-            if (installs.Count == 0)
-            {
-                error = L("注册表中未找到 " + gameName + " 安装位置",
-                          "no " + gameName + " install found in the registry");
-                return false;
-            }
-
-            foreach (string install in installs)
-            {
-                string source = Path.Combine(install, relativePath.Replace('/', '\\'));
-                if (!File.Exists(source))
-                    continue;
-
-                Directory.CreateDirectory(Path.GetDirectoryName(target));
-                if (TryHardLink(source, target))
-                {
-                    error = null;
-                    return true;
-                }
-
-                File.Copy(source, target, false);
-                error = null;
-                return true;
-            }
-
-            error = L("注册表给出的 " + gameName + " 目录中也没有该文件",
-                      "not found in any registry-located " + gameName + " install");
-            return false;
         }
 
         [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
