@@ -152,6 +152,11 @@ namespace Contra
 
                 if (launcherUpdates.Count > 0)
                 {
+                    // EXE is on Cloudflare's default cache-extension list, so a replaced
+                    // launcher binary would keep being served from the edge cache. A query
+                    // buster gives every check/download a fresh cache key.
+                    string cacheBuster = "?t=" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
                     // Work out which launcher files differ (size, and MD5 when the R2 ETag
                     // carries one - single-part R2 uploads put their MD5 in the ETag).
                     var launcherDownloads = new List<KeyValuePair<RemoteEntry, long>>();
@@ -164,7 +169,7 @@ namespace Contra
                             continue;
                         }
 
-                        string[] head = await HeadRemote(entry.Url);
+                        string[] head = await HeadRemote(entry.Url + cacheBuster);
                         if (head == null)
                             continue; // unreachable right now; keep the local launcher
 
@@ -222,7 +227,7 @@ namespace Contra
 
                                     long fileStartOverall = overallReceived;
                                     Stopwatch fileWatch = Stopwatch.StartNew();
-                                    await owner.DownloadFile(entry.Url, updateTemp, TimeSpan.FromMinutes(30),
+                                    await owner.DownloadFile(entry.Url + cacheBuster, updateTemp, TimeSpan.FromMinutes(30),
                                         launcherProgress.Cancellation.Token, (received, total) =>
                                         {
                                             overallReceived = fileStartOverall + received;
