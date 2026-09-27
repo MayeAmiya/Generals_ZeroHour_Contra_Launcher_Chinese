@@ -7,13 +7,13 @@ A Chinese fork of the official [Contra launcher](https://github.com/ContraMod/La
 ## 功能 / Features
 
 ### 启动版本选择 / Version dropdown
-主界面 LAUNCH 按钮旁边的下拉框选择本次启动的目标（选择立即保存，默认「默认」）：
+主界面 LAUNCH 按钮旁边的下拉框选择本次启动的目标（选择立即保存，默认「将军原版」；中文界面第一项显示「将军原版」，其他语言显示 `GeneralsOriginal`）：
 
-The dropdown next to the LAUNCH button picks which build starts (persisted immediately, defaults to 默认):
+The dropdown next to the LAUNCH button picks which build starts (persisted immediately, defaults to GeneralsOriginal):
 
 | 选项 / Option | 启动目标 / Target |
 | --- | --- |
-| `默认` (Default) | 原版 Contra（generals.ctr 交换启动）/ Vanilla Contra via the generals.ctr swap |
+| `将军原版` (GeneralsOriginal) | 原版 Contra（generals.ctr 交换启动）/ Vanilla Contra via the generals.ctr swap |
 | `GeneralsOnline` | 官方将军在线客户端（按 settings.json 的 anticheat 配置走 EAC 包装器或 `GeneralsOnlineZH_60.exe`）/ Official GO client (EAC wrapper or `GeneralsOnlineZH_60.exe`) |
 | `GeneralsOnlineUnlimited` | 修改版 `GeneralsOnlineZH_Unlimited.exe`（无限制镜头，自动去除反作弊插件——EAC 拒绝修改过的可执行文件）/ Our modified unlimited client (anticheat plugin dropped, since EAC rejects modified executables) |
 

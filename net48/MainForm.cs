@@ -256,6 +256,7 @@ namespace Contra
             applyResources(resources, Controls);
             if (!string.IsNullOrEmpty(languageCode))
                 SetLanguage(languageCode);
+            UpdateGoVersionComboDisplay();
             applyTexts?.Invoke();
             SaveLanguageSelection();
             try { RetrieveMOTD(); }
@@ -1850,11 +1851,30 @@ namespace Contra
         ///     client (EAC wrapper or GeneralsOnlineZH_60.exe), 2 = our modified
         ///     GeneralsOnlineZH_Unlimited.exe.
         /// </summary>
-        internal static readonly string[] GoVersionValues = { "Default", "GeneralsOnline", "GeneralsOnlineUnlimited" };
+        internal static readonly string[] GoVersionValues = { "GeneralsOriginal", "GeneralsOnline", "GeneralsOnlineUnlimited" };
 
         internal static bool IsGoVersion
         {
-            get { return !"Default".Equals(Properties.Settings.Default.GoVersion, StringComparison.OrdinalIgnoreCase); }
+            get
+            {
+                // Only the two Generals Online entries start GO clients; anything else
+                // (GeneralsOriginal, plus legacy saved values like "Default") runs vanilla.
+                string version = Properties.Settings.Default.GoVersion;
+                return "GeneralsOnline".Equals(version, StringComparison.OrdinalIgnoreCase)
+                    || "GeneralsOnlineUnlimited".Equals(version, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
+        ///     First dropdown item shows 将军原版 in Chinese, GeneralsOriginal elsewhere.
+        ///     Replacing an item resets SelectedIndex, so it is restored afterwards.
+        /// </summary>
+        private void UpdateGoVersionComboDisplay()
+        {
+            int selected = GoVersionCombo.SelectedIndex;
+            GoVersionCombo.Items[0] = Globals.currentLanguage == "CN" ? "将军原版" : "GeneralsOriginal";
+            if (GoVersionCombo.SelectedIndex != selected && selected >= 0)
+                GoVersionCombo.SelectedIndex = selected;
         }
 
         private static int GoVersionToIndex(string value)
@@ -1882,7 +1902,7 @@ namespace Contra
             }
 
             // The version dropdown decides the target; the vanilla generals.ctr swap below
-            // must only ever run for the "默认" (Default) entry.
+            // must only ever run for the GeneralsOriginal (将军原版) entry.
             if (IsGoVersion)
             {
                 StartGeneralsOnline(Properties.Settings.Default.GoVersion == "GeneralsOnlineUnlimited");
@@ -2270,6 +2290,25 @@ namespace Contra
             var culture = CultureInfo.CurrentCulture;
             string cultureStr = culture.ToString();
             return cultureStr;
+        }
+
+        /// <summary>
+        ///     True when the machine's language is Chinese. Checks the UI culture first (the
+        ///     Windows display language) and the culture as fallback, by "zh" prefix: on .NET
+        ///     5+/ICU a Simplified Chinese system reports "zh-Hans-CN", which matches neither
+        ///     the legacy "zh-CN" nor "zh-Hans" equality checks and silently broke detection.
+        /// </summary>
+        private static bool IsChineseSystemLanguage()
+        {
+            try
+            {
+                return CultureInfo.CurrentUICulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+                    || CultureInfo.CurrentCulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public static class ThreadHelperClass
@@ -2698,12 +2737,14 @@ namespace Contra
 
                 // Determine user language and apply. Chinese is detected here as well; the prompt below only
                 // fires when the launcher is not in Chinese, so a Chinese system is simply already correct.
-                if (GetCurrentCulture() == "en-US") RadioFlag_GB.Checked = true;
+                // Chinese first, by prefix: ICU reports "zh-Hans-CN", which never equals the
+                // legacy exact names and used to silently fall through to English.
+                if (IsChineseSystemLanguage()) RadioFlag_CN.Checked = true;
+                else if (GetCurrentCulture() == "en-US") RadioFlag_GB.Checked = true;
                 else if (GetCurrentCulture() == "ru-RU") RadioFlag_RU.Checked = true;
                 else if (GetCurrentCulture() == "uk-UA") RadioFlag_UA.Checked = true;
                 else if (GetCurrentCulture() == "bg-BG") RadioFlag_BG.Checked = true;
                 else if (GetCurrentCulture() == "de-DE") RadioFlag_DE.Checked = true;
-                else if (GetCurrentCulture() == "zh-CN" || GetCurrentCulture() == "zh-Hans") RadioFlag_CN.Checked = true;
                 else RadioFlag_GB.Checked = true;
 
                 // Show message on first run.
@@ -2792,7 +2833,7 @@ namespace Contra
             if (!RadioFlag_CN.Checked && !RadioFlag_GB.Checked && !RadioFlag_RU.Checked &&
                 !RadioFlag_UA.Checked && !RadioFlag_BG.Checked && !RadioFlag_DE.Checked)
             {
-                if (GetCurrentCulture() == "zh-CN" || GetCurrentCulture() == "zh-Hans")
+                if (IsChineseSystemLanguage())
                     RadioFlag_CN.Checked = true;
                 else
                     RadioFlag_GB.Checked = true;

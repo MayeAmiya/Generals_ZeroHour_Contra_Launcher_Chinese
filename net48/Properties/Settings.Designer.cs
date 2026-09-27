@@ -277,7 +277,7 @@ namespace Contra.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Default")]
+        [global::System.Configuration.DefaultSettingValueAttribute("GeneralsOriginal")]
         public string GoVersion {
             get {
                 return ((string)(this["GoVersion"]));

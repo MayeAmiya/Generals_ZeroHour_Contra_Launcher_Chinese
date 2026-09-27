@@ -8,18 +8,24 @@ namespace Contra
 {
     /// <summary>
     ///     Manifest-driven installation repair. Contra_FileList.txt (next to the launcher exe)
-    ///     lists every file the distribution expects, one per line as "CATEGORY|relative\path";
-    ///     blank lines and lines starting with "#" are comments. Categories decide how a
-    ///     missing file is restored:
+    ///     lists every file the distribution expects, one per line as
+    ///     "CATEGORY|relative\path[|sha256]"; blank lines and lines starting with "#" are
+    ///     comments. Categories decide how a missing file is restored:
     ///
     ///       ZH_GENERALS - base Generals content; copied from the registry-located Generals
     ///                     install (retail EA App, Steam, or The First Decade)
     ///       ZH          - Zero Hour content; copied from the registry-located Zero Hour
     ///                     install; an error is reported when the file exists in neither
-    ///       ENGINE      - our compiled GeneralsOnline engine build; downloaded from S3
-    ///       MOD         - Contra mod content; downloaded from S3
+    ///       ENGINE      - our compiled GeneralsOnline engine build; downloaded from R2
+    ///       MOD         - Contra mod content; downloaded from R2
     ///
-    ///     The launcher executable itself is version-updated from S3 through MainForm's
+    ///     The optional third field carries the expected SHA-256 of the file. When present
+    ///     (MOD and ENGINE) the file is hash-checked on every start: a missing OR outdated
+    ///     (hash mismatch = older version) file is fetched again from R2 and verified after
+    ///     download, so manifest hash bumps double as version bumps. ZH categories repair by
+    ///     existence only - a local retail install cannot provide a specific version.
+    ///
+    ///     The launcher executable itself is version-updated from R2 through MainForm's
     ///     UpdateLogic. A missing list file keeps the whole feature dormant, so the launcher
     ///     stays usable with a plain manual install until the final list ships.
     /// </summary>
@@ -31,6 +37,7 @@ namespace Contra
         {
             public string Category;
             public string RelativePath; // backslash separated, exactly as written in the manifest
+            public string Sha256;       // optional expected digest (lowercase hex, 64 chars)
             public string Error;        // human readable reason when restore failed
         }
 
@@ -65,7 +72,13 @@ namespace Contra
                     {
                         string target = Path.Combine(baseDir, entry.RelativePath.Replace('/', '\\'));
                         if (File.Exists(target))
-                            continue; // present, nothing to do
+                        {
+                            // Existence-only categories accept whatever is on disk. Hashed
+                            // categories (MOD/ENGINE) verify every start so a version bump in
+                            // the manifest re-fetches outdated files automatically.
+                            if (entry.Sha256 == null || VerifySha256(target, entry.Sha256))
+                                continue;
+                        }
 
                         if (await RestoreEntry(entry, target, zhInstalls, generalsInstalls))
                             repaired.Add(entry);
@@ -106,6 +119,16 @@ namespace Contra
                 entry.Category = line.Substring(0, separator).Trim().ToUpperInvariant();
                 entry.RelativePath = line.Substring(separator + 1).Trim();
 
+                // Optional third field: expected SHA-256 (64 hex chars); anything else is ignored.
+                int hashSeparator = entry.RelativePath.IndexOf('|');
+                if (hashSeparator >= 0)
+                {
+                    entry.Sha256 = entry.RelativePath.Substring(hashSeparator + 1).Trim().ToLowerInvariant();
+                    entry.RelativePath = entry.RelativePath.Substring(0, hashSeparator).Trim();
+                    if (!IsSha256(entry.Sha256))
+                        entry.Sha256 = null;
+                }
+
                 if (entry.RelativePath.Length == 0)
                     continue;
 
@@ -134,6 +157,41 @@ namespace Contra
                 default:
                     entry.Error = "未知分类 / unknown category \"" + entry.Category + "\"";
                     return false;
+            }
+        }
+
+        private static bool IsSha256(string value)
+        {
+            if (string.IsNullOrEmpty(value) || value.Length != 64)
+                return false;
+
+            foreach (char c in value)
+            {
+                bool hex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+                if (!hex)
+                    return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        ///     True when the file's SHA-256 matches the manifest's expected digest. Any read
+        ///     failure counts as a mismatch so the caller restores the file.
+        /// </summary>
+        private static bool VerifySha256(string path, string expected)
+        {
+            try
+            {
+                using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create())
+                using (FileStream stream = File.OpenRead(path))
+                {
+                    string actual = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+                    return string.Equals(actual, expected, StringComparison.Ordinal);
+                }
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -179,6 +237,15 @@ namespace Contra
 
             Directory.CreateDirectory(Path.GetDirectoryName(target));
             await MainForm.DownloadFileSimple(url, target, TimeSpan.FromMinutes(10));
+
+            // The manifest hash doubles as the version stamp: a freshly downloaded file that
+            // still mismatches means the R2 copy is not (yet) the manifest's version.
+            if (entry.Sha256 != null && !VerifySha256(target, entry.Sha256))
+            {
+                entry.Error = "下载完成但哈希不符（R2 上的版本与清单不一致）/ downloaded but hash mismatch - " +
+                              "the R2 copy does not match the manifest version";
+                return false;
+            }
             return true;
         }
 

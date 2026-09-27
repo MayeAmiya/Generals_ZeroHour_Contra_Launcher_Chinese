@@ -1,101 +1,40 @@
 # ============================================================
 # Contra 启动器安装校验清单 / Contra launcher install manifest
 # ============================================================
-# 放在启动器 exe 同目录，每行一条： 分类|相对路径
-# Place next to Contra_Launcher.exe, one entry per line: CATEGORY|relative\path
+# 放在启动器 exe 同目录，每行一条： 分类|相对路径[|sha256]
+# Place next to Contra_Launcher.exe: CATEGORY|relative\path[|sha256]
 #   - 空行与 # 开头的行忽略 / blank lines and # comments are ignored
-#   - 相对路径基于启动器目录，正反斜杠均可 / relative to the launcher dir, / or \ both fine
+#   - 相对路径基于启动器目录，正反斜杠均可 / relative to the launcher dir
+#   - 第三个字段 sha256 可选：填了就会校验，文件存在但哈希不符
+#     （版本过旧或损坏）也会重新联网获取；目前仅 MOD / ENGINE 使用
+#   - optional 3rd field sha256: when present the file is hash-checked on
+#     every start and re-fetched when missing or outdated (MOD / ENGINE only)
 #
-# 分类 / categories（缺文件时的补全方式 / how a missing file is restored）:
+# 分类 / categories:
 #   ZH_GENERALS  原版将军内容 —— 从注册表找到的 Generals 安装目录拷贝
-#                (base Generals content, copied from the registry-located Generals install:
-#                 零售 EA App / Steam / 十周年版 The First Decade)
-#   ZH           绝命时刻内容 —— 从注册表找到的绝命时刻安装目录拷贝，
+#                (base Generals content, copied from the registry-located Generals install)
+#   ZH           绝命时刻（ZeroHour）内容 —— 从注册表找到的绝命时刻安装目录拷贝，
 #                注册表找不到或目录里也没有该文件则报错
 #                (Zero Hour content, copied from the registry-located Zero Hour install;
 #                 an error is reported when nothing can provide the file)
-#   ENGINE       我们新编译的将军在线引擎文件 —— 缺失时从 S3 下载
-#                (our compiled GeneralsOnline engine build, downloaded from S3)
-#   MOD          游戏 MOD 文件 —— 缺失时从 S3 下载
-#                (Contra mod content, downloaded from S3)
+#   ENGINE       GeneralsOnlineUnlimited 引擎文件 —— 从 R2 下载并校验哈希
+#                (our unlimited engine build, downloaded from R2 and hash-checked)
+#   MOD          ContraXBeta2 模组文件 —— 从 R2 下载并校验哈希
+#                (Contra mod content, downloaded from R2 and hash-checked)
 #
-# S3 地址在 MainForm.cs 的 S3_BaseUrl 常量中配置；未配置时 ENGINE/MOD 无法下载，
-# 会在报告中提示。启动器自身通过 S3 上的 Versions_X.txt 做版本自更新。
-# The S3 base URL lives in MainForm.S3_BaseUrl; launcher self-update reads
-# Versions_X.txt from the same bucket.
-#
-# 示例:
-# Examples:
-#
-# ZH|data\INI.ini
-# ENGINE|GeneralsOnlineZH_Unlimited.exe
-# MOD|!!!!Contra009Final_Patch3.big
+# 下载通道 / download channel: MainForm.S3_BaseUrl = https://dl.mayeamiya.dev/
+# (Cloudflare R2 bucket contrax-release). 同一相对路径只归属一个分类，
+# 优先级 ENGINE > MOD > ZH > ZH_GENERALS。
 
 # ============================================================
-# ZH_GENERALS —— 原版将军（Generals 1.04 零售中文版）完整文件清单
-# Base Generals content (retail Chinese 1.04), 157 files, generated from
-# "Command & Conquer Generals Gold\Command & Conquer Generals".
-# 启动器目录缺失时从注册表定位的 Generals 安装按原路径拷贝。
+# ZH_GENERALS —— 原版将军（Generals 1.04 零售版，剔除与绝命时刻同路径的文件）
+# Base Generals content (retail 1.04); paths shared with the Zero Hour install
+# are owned by the ZH section below.
 # ============================================================
 
-ZH_GENERALS|00000000.016
-ZH_GENERALS|00000000.256
 ZH_GENERALS|Audio.big
-ZH_GENERALS|BINKW32.DLL
 ZH_GENERALS|BrowserEngine.dll
 ZH_GENERALS|Chinese.big
-ZH_GENERALS|Data/Cursors/SCCAttMov.ani
-ZH_GENERALS|Data/Cursors/SCCAttMov_S.ani
-ZH_GENERALS|Data/Cursors/SCCAttack_S.ani
-ZH_GENERALS|Data/Cursors/SCCCashHack.ani
-ZH_GENERALS|Data/Cursors/SCCEnter.ani
-ZH_GENERALS|Data/Cursors/SCCEnter_S.ani
-ZH_GENERALS|Data/Cursors/SCCExit.ani
-ZH_GENERALS|Data/Cursors/SCCFriendly.ani
-ZH_GENERALS|Data/Cursors/SCCFriendly_S.ani
-ZH_GENERALS|Data/Cursors/SCCGuard.ani
-ZH_GENERALS|Data/Cursors/SCCHeal.ani
-ZH_GENERALS|Data/Cursors/SCCHostile.ani
-ZH_GENERALS|Data/Cursors/SCCHostile2.ani
-ZH_GENERALS|Data/Cursors/SCCHostile3.ani
-ZH_GENERALS|Data/Cursors/SCCHostile_S.ani
-ZH_GENERALS|Data/Cursors/SCCKnifeAttack.ani
-ZH_GENERALS|Data/Cursors/SCCMove_S.ani
-ZH_GENERALS|Data/Cursors/SCCNoAction.ani
-ZH_GENERALS|Data/Cursors/SCCNoAction_S.ani
-ZH_GENERALS|Data/Cursors/SCCNoBomb.ani
-ZH_GENERALS|Data/Cursors/SCCNoEntry.ani
-ZH_GENERALS|Data/Cursors/SCCNoEntry_S.ani
-ZH_GENERALS|Data/Cursors/SCCNoKnife.ani
-ZH_GENERALS|Data/Cursors/SCCOutrange.ani
-ZH_GENERALS|Data/Cursors/SCCPlace.ani
-ZH_GENERALS|Data/Cursors/SCCPlaceBeacon.ani
-ZH_GENERALS|Data/Cursors/SCCRallyPnt.ani
-ZH_GENERALS|Data/Cursors/SCCRallyPnt_S.ani
-ZH_GENERALS|Data/Cursors/SCCRemoteChg.ani
-ZH_GENERALS|Data/Cursors/SCCRepair.ani
-ZH_GENERALS|Data/Cursors/SCCResumeC.ani
-ZH_GENERALS|Data/Cursors/SCCSDIUplink.ani
-ZH_GENERALS|Data/Cursors/SCCScroll4.ani
-ZH_GENERALS|Data/Cursors/SCCScroll5.ani
-ZH_GENERALS|Data/Cursors/SCCScroll6.ani
-ZH_GENERALS|Data/Cursors/SCCScroll7.ani
-ZH_GENERALS|Data/Cursors/SCCSelect.ani
-ZH_GENERALS|Data/Cursors/SCCSell.ani
-ZH_GENERALS|Data/Cursors/SCCSniper.ani
-ZH_GENERALS|Data/Cursors/SCCSpyDrone.ani
-ZH_GENERALS|Data/Cursors/SCCStop.ani
-ZH_GENERALS|Data/Cursors/SCCTNTAttack.ani
-ZH_GENERALS|Data/Cursors/SCCTimedChg.ani
-ZH_GENERALS|Data/Cursors/SCCWaypoint.ani
-ZH_GENERALS|Data/Cursors/SCCWaypoint_S.ani
-ZH_GENERALS|Data/Cursors/sccattack.ani
-ZH_GENERALS|Data/Cursors/sccmove.ani
-ZH_GENERALS|Data/Cursors/sccpointer.ani
-ZH_GENERALS|Data/Cursors/sccscroll0.ani
-ZH_GENERALS|Data/Cursors/sccscroll1.ani
-ZH_GENERALS|Data/Cursors/sccscroll2.ani
-ZH_GENERALS|Data/Cursors/sccscroll3.ani
 ZH_GENERALS|Data/Movies/CHINA_end.bik
 ZH_GENERALS|Data/Movies/CHINA_end640.bik
 ZH_GENERALS|Data/Movies/China01_Final_00s.bik
@@ -125,75 +64,210 @@ ZH_GENERALS|Data/Movies/USA07_Final_00s.bik
 ZH_GENERALS|Data/Movies/USA08_Final_00s.bik
 ZH_GENERALS|Data/Movies/USA_end.bik
 ZH_GENERALS|Data/Movies/USA_end640.bik
-ZH_GENERALS|Data/Scripts/MultiplayerScripts.scb
-ZH_GENERALS|Data/Scripts/SkirmishScripts.scb
-ZH_GENERALS|Data/WaterPlane/caust00.tga
-ZH_GENERALS|Data/WaterPlane/caust01.tga
-ZH_GENERALS|Data/WaterPlane/caust02.tga
-ZH_GENERALS|Data/WaterPlane/caust03.tga
-ZH_GENERALS|Data/WaterPlane/caust04.tga
-ZH_GENERALS|Data/WaterPlane/caust05.tga
-ZH_GENERALS|Data/WaterPlane/caust06.tga
-ZH_GENERALS|Data/WaterPlane/caust07.tga
-ZH_GENERALS|Data/WaterPlane/caust08.tga
-ZH_GENERALS|Data/WaterPlane/caust09.tga
-ZH_GENERALS|Data/WaterPlane/caust10.tga
-ZH_GENERALS|Data/WaterPlane/caust11.tga
-ZH_GENERALS|Data/WaterPlane/caust12.tga
-ZH_GENERALS|Data/WaterPlane/caust13.tga
-ZH_GENERALS|Data/WaterPlane/caust14.tga
-ZH_GENERALS|Data/WaterPlane/caust15.tga
-ZH_GENERALS|Data/WaterPlane/caust16.tga
-ZH_GENERALS|Data/WaterPlane/caust17.tga
-ZH_GENERALS|Data/WaterPlane/caust18.tga
-ZH_GENERALS|Data/WaterPlane/caust19.tga
-ZH_GENERALS|Data/WaterPlane/caust20.tga
-ZH_GENERALS|Data/WaterPlane/caust21.tga
-ZH_GENERALS|Data/WaterPlane/caust22.tga
-ZH_GENERALS|Data/WaterPlane/caust23.tga
-ZH_GENERALS|Data/WaterPlane/caust24.tga
-ZH_GENERALS|Data/WaterPlane/caust25.tga
-ZH_GENERALS|Data/WaterPlane/caust26.tga
-ZH_GENERALS|Data/WaterPlane/caust27.tga
-ZH_GENERALS|Data/WaterPlane/caust28.tga
-ZH_GENERALS|Data/WaterPlane/caust29.tga
-ZH_GENERALS|Data/WaterPlane/caust30.tga
-ZH_GENERALS|Data/WaterPlane/caust31.tga
-ZH_GENERALS|DrvMgt.dll
-ZH_GENERALS|Generals.dat
-ZH_GENERALS|Generals.exe
 ZH_GENERALS|INI.big
-ZH_GENERALS|Install_Final.bmp
-ZH_GENERALS|MSS/mssa3d.m3d
-ZH_GENERALS|MSS/mssds3d.m3d
-ZH_GENERALS|MSS/mssdsp.flt
-ZH_GENERALS|MSS/mssdx7.m3d
-ZH_GENERALS|MSS/msseax.m3d
-ZH_GENERALS|MSS/mssmp3.asi
-ZH_GENERALS|MSS/mssrsx.m3d
-ZH_GENERALS|MSS/msssoft.m3d
-ZH_GENERALS|MSS/mssvoice.asi
-ZH_GENERALS|Music.big
-ZH_GENERALS|P2XDLL.DLL
 ZH_GENERALS|Patch.big
-ZH_GENERALS|SECDRV.SYS
 ZH_GENERALS|Speech.big
 ZH_GENERALS|SpeechChinese.big
 ZH_GENERALS|Terrain.big
 ZH_GENERALS|Textures.big
 ZH_GENERALS|W3D.big
 ZH_GENERALS|Window.big
-ZH_GENERALS|WorldBuilder.exe
 ZH_GENERALS|audiochinese.big
-ZH_GENERALS|dbghelp.dll
-ZH_GENERALS|generals.lcf
 ZH_GENERALS|gensec.big
-ZH_GENERALS|langdata.dat
-ZH_GENERALS|launcher.bmp
 ZH_GENERALS|maps.big
-ZH_GENERALS|mss32.dll
-ZH_GENERALS|patchget.dat
-ZH_GENERALS|patchw32.dll
 ZH_GENERALS|shaders.big
 
-# ZH_GENERALS 共 / total: 157 条 (Generals 1.04 零售中文版完整清单)
+# ============================================================
+# ZH —— 绝命时刻（ZeroHour 1.04 零售中文版）完整文件清单 / retail Zero Hour 1.04
+# ============================================================
+ZH|00000000.016
+ZH|00000000.256
+ZH|AudioChineseZH.big
+ZH|AudioZH.big
+ZH|BINKW32.DLL
+ZH|ChineseZH.big
+ZH|Data/Cursors/SCCAttMov.ani
+ZH|Data/Cursors/SCCAttMov_S.ani
+ZH|Data/Cursors/SCCAttack_S.ani
+ZH|Data/Cursors/SCCCashHack.ani
+ZH|Data/Cursors/SCCEnter.ani
+ZH|Data/Cursors/SCCEnter_S.ani
+ZH|Data/Cursors/SCCExit.ani
+ZH|Data/Cursors/SCCFriendly.ani
+ZH|Data/Cursors/SCCFriendly_S.ani
+ZH|Data/Cursors/SCCGuard.ani
+ZH|Data/Cursors/SCCHeal.ani
+ZH|Data/Cursors/SCCHostile.ani
+ZH|Data/Cursors/SCCHostile2.ani
+ZH|Data/Cursors/SCCHostile3.ani
+ZH|Data/Cursors/SCCHostile_S.ani
+ZH|Data/Cursors/SCCKnifeAttack.ani
+ZH|Data/Cursors/SCCMove_S.ani
+ZH|Data/Cursors/SCCNoAction.ani
+ZH|Data/Cursors/SCCNoAction_S.ani
+ZH|Data/Cursors/SCCNoBomb.ani
+ZH|Data/Cursors/SCCNoEntry.ani
+ZH|Data/Cursors/SCCNoEntry_S.ani
+ZH|Data/Cursors/SCCNoKnife.ani
+ZH|Data/Cursors/SCCOutrange.ani
+ZH|Data/Cursors/SCCPlace.ani
+ZH|Data/Cursors/SCCPlaceBeacon.ani
+ZH|Data/Cursors/SCCRallyPnt.ani
+ZH|Data/Cursors/SCCRallyPnt_S.ani
+ZH|Data/Cursors/SCCRemoteChg.ani
+ZH|Data/Cursors/SCCRepair.ani
+ZH|Data/Cursors/SCCResumeC.ani
+ZH|Data/Cursors/SCCSDIUplink.ani
+ZH|Data/Cursors/SCCScroll4.ani
+ZH|Data/Cursors/SCCScroll5.ani
+ZH|Data/Cursors/SCCScroll6.ani
+ZH|Data/Cursors/SCCScroll7.ani
+ZH|Data/Cursors/SCCSelect.ani
+ZH|Data/Cursors/SCCSell.ani
+ZH|Data/Cursors/SCCSniper.ani
+ZH|Data/Cursors/SCCSpyDrone.ani
+ZH|Data/Cursors/SCCStop.ani
+ZH|Data/Cursors/SCCTNTAttack.ani
+ZH|Data/Cursors/SCCTimedChg.ani
+ZH|Data/Cursors/SCCWaypoint.ani
+ZH|Data/Cursors/SCCWaypoint_S.ani
+ZH|Data/Cursors/sccattack.ani
+ZH|Data/Cursors/sccmove.ani
+ZH|Data/Cursors/sccpointer.ani
+ZH|Data/Cursors/sccscroll0.ani
+ZH|Data/Cursors/sccscroll1.ani
+ZH|Data/Cursors/sccscroll2.ani
+ZH|Data/Cursors/sccscroll3.ani
+ZH|Data/INI/INIZH.big
+ZH|Data/Movies/GC_Background.bik
+ZH|Data/Movies/VS_small.bik
+ZH|Data/Scripts/MultiplayerScripts.scb
+ZH|Data/Scripts/Scripts.ini
+ZH|Data/Scripts/SkirmishScripts.scb
+ZH|Data/WaterPlane/caust00.tga
+ZH|Data/WaterPlane/caust01.tga
+ZH|Data/WaterPlane/caust02.tga
+ZH|Data/WaterPlane/caust03.tga
+ZH|Data/WaterPlane/caust04.tga
+ZH|Data/WaterPlane/caust05.tga
+ZH|Data/WaterPlane/caust06.tga
+ZH|Data/WaterPlane/caust07.tga
+ZH|Data/WaterPlane/caust08.tga
+ZH|Data/WaterPlane/caust09.tga
+ZH|Data/WaterPlane/caust10.tga
+ZH|Data/WaterPlane/caust11.tga
+ZH|Data/WaterPlane/caust12.tga
+ZH|Data/WaterPlane/caust13.tga
+ZH|Data/WaterPlane/caust14.tga
+ZH|Data/WaterPlane/caust15.tga
+ZH|Data/WaterPlane/caust16.tga
+ZH|Data/WaterPlane/caust17.tga
+ZH|Data/WaterPlane/caust18.tga
+ZH|Data/WaterPlane/caust19.tga
+ZH|Data/WaterPlane/caust20.tga
+ZH|Data/WaterPlane/caust21.tga
+ZH|Data/WaterPlane/caust22.tga
+ZH|Data/WaterPlane/caust23.tga
+ZH|Data/WaterPlane/caust24.tga
+ZH|Data/WaterPlane/caust25.tga
+ZH|Data/WaterPlane/caust26.tga
+ZH|Data/WaterPlane/caust27.tga
+ZH|Data/WaterPlane/caust28.tga
+ZH|Data/WaterPlane/caust29.tga
+ZH|Data/WaterPlane/caust30.tga
+ZH|Data/WaterPlane/caust31.tga
+ZH|DrvMgt.dll
+ZH|Generals.dat
+ZH|Generals.exe
+ZH|INIZH.big
+ZH|Install_Final.bmp
+ZH|MSS/mssa3d.m3d
+ZH|MSS/mssds3d.m3d
+ZH|MSS/mssdsp.flt
+ZH|MSS/mssdx7.m3d
+ZH|MSS/msseax.m3d
+ZH|MSS/mssmp3.asi
+ZH|MSS/mssrsx.m3d
+ZH|MSS/msssoft.m3d
+ZH|MSS/mssvoice.asi
+ZH|MapsZH.big
+ZH|Music.big
+ZH|MusicZH.big
+ZH|P2XDLL.DLL
+ZH|PatchZH.big
+ZH|SECDRV.SYS
+ZH|ShadersZH.big
+ZH|SpeechChineseZH.big
+ZH|SpeechZH.big
+ZH|TerrainZH.big
+ZH|TexturesZH.big
+ZH|W3DChineseZH.big
+ZH|W3DZH.big
+ZH|WindowZH.big
+ZH|WorldBuilder.exe
+ZH|dbghelp.dll
+ZH|generals.lcf
+ZH|gensecZH.big
+ZH|langdata.dat
+ZH|launcher.bmp
+ZH|mss32.dll
+ZH|patchget.dat
+ZH|patchw32.dll
+
+# ============================================================
+# MOD —— ContraXBeta2 模组文件（带 sha256，缺失或版本不符时从 R2 获取）
+# ContraXBeta2 mod content, hash-checked and fetched from R2 when missing or outdated
+# ============================================================
+MOD|!!ContraXBeta2_CameosHD.ctr|0bd5c3dbd2560d7973258138a181758e3f74e3f18caa8a0263f0de79b44ec7b9
+MOD|!!ContraXBeta2_ControlBarPro.ctr|193a12625f4d802766cb888878cca3a1b6dd44e0e8c2c527e82585fb03835a0f
+MOD|!!ContraXBeta2_ControlBarStandard.ctr|a2cbab87a297a09bd41f40e8c18e6b3ea753fe6cef66b33ea108e41923340b91
+MOD|!!ContraXBeta2_DisableExtraBuildingProps.ctr|4d44b8109b01d363ca679b352a68e48c3edab67b559550b9b55a28556f51feff
+MOD|!!ContraXBeta2_DisableFogEffects.ctr|733787b6fd6b4948be4b31fe6ab3b2735ee9919484a69a19567292635cead712
+MOD|!!ContraXBeta2_DisableWaterEffects.ctr|e4c6f40f954152d8ff025d401aa08a766e4664b318a31345e654f88c69367524
+MOD|!!ContraXBeta2_FunnyGeneralPortraits.ctr|6b9cc509f5de7224008c1d2ea500af9fa974c96a5af647c916131dffc20881b3
+MOD|!!ContraXBeta2_Patch1.ctr|9172b6a63da56569e5bffc078a1188915f79d6bbbe859b7add54444e1b4fa634
+MOD|!ContraXBeta2_AI.ctr|1023a048c4677f023d03d54b1d0489e9297c48cc1181637530d9fec3328df970
+MOD|!ContraXBeta2_Audio.ctr|b45d71cbfd4c4047612dd95209811ca36da6115edbca05bd3f5767a2e770f7bc
+MOD|!ContraXBeta2_GameData.ctr|2e643f8d8633c8fe10adac488c6c4288269d3d0adf57f0909ba034fffa2dc6cd
+MOD|!ContraXBeta2_HotkeysLeikeze_English.ctr|baf153d1b8f838f2f7f5675ecc3b08c18c141bc059dcc43f69c8833bc8ea93d9
+MOD|!ContraXBeta2_HotkeysLeikeze_Russian.ctr|a045205d8d79a82e38502d18b6a3e111034cbc6d60b75b24c8003d38494fed9f
+MOD|!ContraXBeta2_HotkeysOriginal_English.ctr|1a786c31d4d55dc64acd3fcfd9bd505c4eecc959a90e5b1cf397e6364d605482
+MOD|!ContraXBeta2_HotkeysOriginal_Russian.ctr|53574762a83e6b719e27a0a4ca7fb0ab8efe364b964a4dc4aae6d7790b04758b
+MOD|!ContraXBeta2_INI.ctr|5c3171d3d3bb0c5d17635097ad1a2f07af2a1e5de9d087d12d2568c9d4e7de9e
+MOD|!ContraXBeta2_Maps.ctr|53fa44f5ad83c28795f9759cef1ac1c576f330128950712eb4e1b8fa7e2ce09b
+MOD|!ContraXBeta2_MusicEnhanced.ctr|f6f19b1a9eb90ec76dd8318fa4e00b1fcff89800a1a697e0e3c07f2a1abe6a24
+MOD|!ContraXBeta2_MusicTheScore.ctr|68b42bc98bcd5ad3547835b167165c280a8e5583e36ce8c6d4ccaa2c7c443ac3
+MOD|!ContraXBeta2_Terrain.ctr|2fee1cb136a727ab2a1372724907c9264ef773fc364f32223aee82c354ebf8a4
+MOD|!ContraXBeta2_Textures.ctr|bd581eac774352e2e113b93fba427017aadea0d86aa2bba2f2e12b163da39639
+MOD|!ContraXBeta2_UnitVoicesEnglish.ctr|065eeb6da9ac0ec49f1e76f57388c4d271118a4d11b9bf3e5e6719155c4cddc4
+MOD|!ContraXBeta2_UnitVoicesNative.ctr|76caa99274a72cd031dca2391908106655120e2ad1dc4cde5b8ace1df8c092ca
+MOD|!ContraXBeta2_W3D.ctr|709ab1c8072e231c37a30d90a5243d31f070dd479847221529787e265a5c77e4
+MOD|!ContraXBeta2_Window.ctr|1a98728e8bb6a18fd975c6ded0dc63900392c8c4d14c4739ee566194feb126b4
+MOD|ContraIco.ico|5991e58649b882b97070c17e68456ca40c24403e7a4b9f547830d9fa12b9afe5
+MOD|ContraInstallIco.ico|c71ff06335f385f25343a15f83e15f2be3c29af8f82ca1454e03003c540a2862
+MOD|ContraUninstallIco.ico|d20b92421a2d3b56d734462c0b6185ca31133cc56af9b9abb8568ef0192ec182
+MOD|GenArial.ttf|a50a17ba1409891d0981990b77477559fb02235e336c10ab5ee00ab3300f77fa
+MOD|Install_Final_Contra.bmp|40ff0197fa125b80d1cb9351e4cfef6404c93984e3dfff150c0689d9f66dc8ad
+MOD|WorldBuilder_Ctr.exe|ca1924691ce577c413a93b196897b454503f2f3c80e29f29f06380047b408a30
+MOD|config.enb|a3b343cea55928bd4ee5ba041aa04ac28d05a350f1dddda2c61d3796f5fcd5f1
+MOD|d3d8.enb|e9fd7241b96c4652f521f4d2ff6ce4a29c5651dd46b5bf683812200ae8e035cd
+MOD|d3d8x.enb|e9fd7241b96c4652f521f4d2ff6ce4a29c5651dd46b5bf683812200ae8e035cd
+MOD|generals.ctr|4ea7e86baffbc94946f6e2f89f698812159b34b89876822de329af19bc28c887
+
+# ============================================================
+# ENGINE —— GeneralsOnlineUnlimited 引擎文件（带 sha256，从 R2 获取）
+# Unlimited engine build, hash-checked and fetched from R2
+# ============================================================
+ENGINE|GameNetworkingSockets.dll|f77eaab1d3fd574274d16d090c0d89ebcbb3354cffd0afbd77543d985866966c
+ENGINE|GeneralsOnlineZH_Unlimited.exe|b5a0f59eb7005355efd4988f3e5d4359a543657a174c4ea1aea744c78054f5fc
+ENGINE|abseil_dll.dll|efe6da945a5a190667ef956779efa757cd98b5167d2719961b01a0002f964a3d
+ENGINE|discord-rpc-LICENSE.txt|f765a92d4b833a59b765a96fc260cfe7a783867d74e291c9dacec44e6180fe39
+ENGINE|discord-rpc.dll|ef7404768c7183bdce9e46666a121a89b77be40060d0aea4d67804cf0e5ce6d8
+ENGINE|gamespy.dll|ecaa8debe4516ac4b12d29a97feac0fdd12537dcbf5766ddc4b6843879d37b02
+ENGINE|libcrypto-3.dll|771e39f39c60ccb265fa95540e3fa9c49ff6d79da3d806685425088cc7da6430
+ENGINE|libcurl.dll|8b25a876db526fb3c04ea711a35bd39f6709b550868769a5c76bba5a32c21481
+ENGINE|libprotobuf.dll|b2ce5857f4303350c5cc3724cad66532cce62625b353168e8bda9032dc7b998a
+ENGINE|libssl-3.dll|359506eb1e3c4f21d68d6d88ff0166f9d842129201b3ece1596b8398a9832569
+ENGINE|zlib1.dll|b827a65b9366ea8f7d951db373fb6a18d04aed6954c0f62a03db9629bec2a11d
+
+# 汇总 / totals: ZH_GENERALS=44 ZH=133 MOD=35 ENGINE=11

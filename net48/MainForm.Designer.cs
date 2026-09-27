@@ -258,18 +258,19 @@ namespace Contra
             this.LaunchBtn.MouseLeave += new System.EventHandler(this.LaunchBtn_MouseLeave);
             //
             // GoVersionCombo - sits right of the LAUNCH button and picks which build starts:
-            // 默认 (vanilla Contra), GeneralsOnline (official client), GeneralsOnlineUnlimited.
+            // GeneralsOriginal (vanilla Contra, 将军原版 in Chinese), GeneralsOnline
+            // (official client), GeneralsOnlineUnlimited.
             //
             this.GoVersionCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.GoVersionCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.GoVersionCombo.BackColor = System.Drawing.Color.FromArgb(30, 30, 46);
             this.GoVersionCombo.ForeColor = System.Drawing.Color.White;
-            this.GoVersionCombo.Font = new System.Drawing.Font("Calibri", 13F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel);
+            this.GoVersionCombo.Font = new System.Drawing.Font("Calibri", 16F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel);
             this.GoVersionCombo.FormattingEnabled = true;
-            this.GoVersionCombo.Items.AddRange(new object[] { "默认", "GeneralsOnline", "GeneralsOnlineUnlimited" });
-            this.GoVersionCombo.Location = new System.Drawing.Point(515, 152);
+            this.GoVersionCombo.Items.AddRange(new object[] { "GeneralsOriginal", "GeneralsOnline", "GeneralsOnlineUnlimited" });
+            this.GoVersionCombo.Location = new System.Drawing.Point(515, 148);
             this.GoVersionCombo.Name = "GoVersionCombo";
-            this.GoVersionCombo.Size = new System.Drawing.Size(170, 26);
+            this.GoVersionCombo.Size = new System.Drawing.Size(230, 34);
             this.GoVersionCombo.TabIndex = 2;
             this.GoVersionCombo.SelectedIndexChanged += new System.EventHandler(this.GoVersionCombo_SelectedIndexChanged);
             // 
