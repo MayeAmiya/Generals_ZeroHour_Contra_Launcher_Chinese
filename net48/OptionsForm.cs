@@ -60,9 +60,8 @@ namespace Contra
         // Bool that helps check if heat effects checkbox has been checked by the user and not automatically
         bool heatEffectsCheckBoxIsClicked = false;
 
-        // Generals Online launch mode radios (created in the constructor).
-        private CheckBox GoModeCheckBox;
-        private CheckBox GoUnlimitedCheckBox;
+        // Generals Online launch mode is picked by the version dropdown on the main form
+        // (MainForm.GoVersionCombo, persisted as Settings.GoVersion); helpers below only read it.
 
         // Combined quality tier for the Generals Online client build (created in the constructor).
         // One dropdown maps to MSAA + texture filter + anisotropy; persisted to Options.ini
@@ -82,40 +81,17 @@ namespace Contra
             ExitBtnSm.TabStop = false;
             resolutionComboBox.TabStop = false;
 
-            // Generals Online launch mode and its unlimited-camera extension. The second option only
-            // becomes selectable once the first is picked.
-            GoModeCheckBox = new CheckBox();
-            GoModeCheckBox.Text = "Generals\r\nOnline";
-            GoModeCheckBox.AutoSize = true;
-            GoModeCheckBox.Location = new Point(658, 150);
-            GoModeCheckBox.BackColor = Color.Transparent;
-            GoModeCheckBox.ForeColor = Color.White;
-            GoModeCheckBox.UseVisualStyleBackColor = false;
-            Controls.Add(GoModeCheckBox);
-
-            GoUnlimitedCheckBox = new CheckBox();
-            GoUnlimitedCheckBox.Text = "OnlineUnlimited";
-            GoUnlimitedCheckBox.AutoSize = true;
-            GoUnlimitedCheckBox.Location = new Point(658, 176);
-            GoUnlimitedCheckBox.BackColor = Color.Transparent;
-            GoUnlimitedCheckBox.ForeColor = Color.White;
-            GoUnlimitedCheckBox.UseVisualStyleBackColor = false;
-            Controls.Add(GoUnlimitedCheckBox);
-
-            GoModeCheckBox.CheckedChanged += GoModeCheckBox_CheckedChanged;
-            GoUnlimitedCheckBox.CheckedChanged += GoUnlimitedCheckBox_CheckedChanged;
-            GoModeCheckBox.Checked = Properties.Settings.Default.GoClientMode;
-            GoUnlimitedCheckBox.Enabled = GoModeCheckBox.Checked;
-            GoUnlimitedCheckBox.Checked = GoModeCheckBox.Checked && Properties.Settings.Default.GoUnlimitedCamera;
-            cameraControlsInitializing = false;
+            // The Generals Online launch-mode checkboxes are gone: the version dropdown on the
+            // main form (GoVersionCombo -> Settings.GoVersion) now picks which build LAUNCH
+            // starts, so the options window only tunes the mode it will be launched with.
 
             // Combined quality tier dropdown (GO client): the game's own Options menu exposes the
             // same setting as "Anti-Aliasing"; each tier bundles an MSAA level with a matching
-            // texture filter and anisotropy level. Placed below the Generals Online checkboxes.
+            // texture filter and anisotropy level. Placed below where the GO checkboxes were.
             QualityTierLabel = new Label();
             QualityTierLabel.Text = "MSAA + Filter";
             QualityTierLabel.AutoSize = true;
-            QualityTierLabel.Location = new Point(658, 204);
+            QualityTierLabel.Location = new Point(658, 150);
             QualityTierLabel.BackColor = Color.Transparent;
             QualityTierLabel.ForeColor = Color.White;
             Controls.Add(QualityTierLabel);
@@ -129,7 +105,7 @@ namespace Contra
                 "4X",
                 "8X"
             });
-            QualityTierComboBox.Location = new Point(658, 224);
+            QualityTierComboBox.Location = new Point(658, 170);
             QualityTierComboBox.Size = new Size(90, 26);
             QualityTierComboBox.BackColor = Color.FromArgb(30, 30, 46);
             QualityTierComboBox.ForeColor = Color.White;
@@ -321,15 +297,10 @@ namespace Contra
                 NoPreviewText.Text = "暂无预览";
                 AcceptBtn.Text = "确定";
                 CloseBtn.Text = "关闭";
-                GoModeCheckBox.Text = "在线版将军";
-                GoUnlimitedCheckBox.Text = "无限制模式";
+                QualityTierLabel.Text = "画质等级";
                 ApplyChineseFont(Controls);
             }
             //TextureResLabel.Text = Messages.GenerateMessage("TextureRes", Globals.currentLanguage);
-
-            // Match the option checkbox styling - in Chinese this is the post-sweep Microsoft YaHei size.
-            GoModeCheckBox.Font = FogCheckBox.Font;
-            GoUnlimitedCheckBox.Font = FogCheckBox.Font;
 
             // Load settings from Options.ini to display them in our Options form
             if (Directory.Exists(Globals.myDocPath))
@@ -453,7 +424,7 @@ namespace Contra
             // Get current camera state from the config of the selected mode, so the sliders
             // always show what the game will actually use (files beat stale stored values -
             // the GO client and GenTool can both change values while playing).
-            if (GoModeCheckBox.Checked)
+            if (IsGoMode())
             {
                 if (ReadGoCameraSettings(out int goPitch, out int goHeight))
                 {
@@ -479,6 +450,23 @@ namespace Contra
             Properties.Settings.Default.GoCameraPitch = ParticleCapTrackBar.Value;
             Properties.Settings.Default.GoCameraMaxHeight = CameraHeightTrackBar.Value;
             Properties.Settings.Default.Save();
+        }
+
+        /// <summary>
+        ///     True when the main form's version dropdown selected a Generals Online build
+        ///     ("GeneralsOnline" or "GeneralsOnlineUnlimited"); "默认" (Default) runs vanilla Contra.
+        /// </summary>
+        internal static bool IsGoMode()
+        {
+            return MainForm.IsGoVersion;
+        }
+
+        /// <summary>
+        ///     True when the version dropdown selected the modified unlimited client build.
+        /// </summary>
+        internal static bool IsUnlimitedGoVersion()
+        {
+            return "GeneralsOnlineUnlimited".Equals(Properties.Settings.Default.GoVersion, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -512,7 +500,7 @@ namespace Contra
         {
             try
             {
-                if (Properties.Settings.Default.GoClientMode)
+                if (MainForm.IsGoVersion)
                 {
                     if (ReadGoCameraSettings(out int pitch, out int maxHeight))
                     {
@@ -1189,15 +1177,13 @@ namespace Contra
         /// </summary>
         private void ApplyCameraForCurrentMode()
         {
-            Properties.Settings.Default.GoClientMode = GoModeCheckBox.Checked;
-            Properties.Settings.Default.GoUnlimitedCamera = GoUnlimitedCheckBox.Checked;
             Properties.Settings.Default.GoCameraMaxHeight = CameraHeightTrackBar.Value;
             Properties.Settings.Default.GoCameraPitch = ParticleCapTrackBar.Value;
             Properties.Settings.Default.Save();
 
-            if (GoModeCheckBox.Checked)
+            if (IsGoMode())
             {
-                bool unlimited = GoUnlimitedCheckBox.Checked;
+                bool unlimited = IsUnlimitedGoVersion();
                 WriteGoCameraSettings(unlimited ? CameraHeightTrackBar.Value : 0,
                     unlimited ? ParticleCapTrackBar.Value : 0);
             }
@@ -1213,29 +1199,6 @@ namespace Contra
                 WriteD3D8Config(ParticleCapTrackBar.Value, CameraHeightTrackBar.Value);
                 WriteGoCameraSettings(0, 0);
             }
-        }
-
-        private void GoModeCheckBox_CheckedChanged(object sender, EventArgs e)
-        {
-            GoUnlimitedCheckBox.Enabled = GoModeCheckBox.Checked;
-
-            if (!GoModeCheckBox.Checked)
-                GoUnlimitedCheckBox.Checked = false;
-
-            if (cameraControlsInitializing)
-                return;
-
-            // Switching sides pushes the state visible right now into the other mode's config.
-            ApplyCameraForCurrentMode();
-        }
-
-        private void GoUnlimitedCheckBox_CheckedChanged(object sender, EventArgs e)
-        {
-            if (cameraControlsInitializing)
-                return;
-
-            if (GoModeCheckBox.Checked)
-                ApplyCameraForCurrentMode();
         }
 
         /// <summary>
@@ -1298,7 +1261,7 @@ namespace Contra
             {
                 if (File.Exists(GoSettingsJsonPath())) return;
 
-                if (Properties.Settings.Default.GoClientMode && Properties.Settings.Default.GoUnlimitedCamera)
+                if (MainForm.IsGoVersion && IsUnlimitedGoVersion())
                 {
                     WriteGoCameraSettings(Properties.Settings.Default.GoCameraMaxHeight,
                         Properties.Settings.Default.GoCameraPitch);

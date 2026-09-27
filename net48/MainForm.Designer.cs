@@ -44,6 +44,7 @@ namespace Contra
             this.ExitBtn = new System.Windows.Forms.Button();
             this.WBBtn = new System.Windows.Forms.Button();
             this.LaunchBtn = new System.Windows.Forms.Button();
+            this.GoVersionCombo = new System.Windows.Forms.ComboBox();
             this.RadioFlag_GB = new System.Windows.Forms.RadioButton();
             this.panel1 = new System.Windows.Forms.Panel();
             this.RadioFlag_DE = new System.Windows.Forms.RadioButton();
@@ -255,6 +256,22 @@ namespace Contra
             this.LaunchBtn.MouseDown += new System.Windows.Forms.MouseEventHandler(this.LaunchBtn_MouseDown);
             this.LaunchBtn.MouseEnter += new System.EventHandler(this.LaunchBtn_MouseEnter);
             this.LaunchBtn.MouseLeave += new System.EventHandler(this.LaunchBtn_MouseLeave);
+            //
+            // GoVersionCombo - sits right of the LAUNCH button and picks which build starts:
+            // 默认 (vanilla Contra), GeneralsOnline (official client), GeneralsOnlineUnlimited.
+            //
+            this.GoVersionCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.GoVersionCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.GoVersionCombo.BackColor = System.Drawing.Color.FromArgb(30, 30, 46);
+            this.GoVersionCombo.ForeColor = System.Drawing.Color.White;
+            this.GoVersionCombo.Font = new System.Drawing.Font("Calibri", 13F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel);
+            this.GoVersionCombo.FormattingEnabled = true;
+            this.GoVersionCombo.Items.AddRange(new object[] { "默认", "GeneralsOnline", "GeneralsOnlineUnlimited" });
+            this.GoVersionCombo.Location = new System.Drawing.Point(515, 152);
+            this.GoVersionCombo.Name = "GoVersionCombo";
+            this.GoVersionCombo.Size = new System.Drawing.Size(170, 26);
+            this.GoVersionCombo.TabIndex = 2;
+            this.GoVersionCombo.SelectedIndexChanged += new System.EventHandler(this.GoVersionCombo_SelectedIndexChanged);
             // 
             // RadioFlag_GB
             // 
@@ -792,6 +809,7 @@ namespace Contra
             this.Controls.Add(this.onlineInstructionsLabel);
             this.Controls.Add(this.MOTD);
             this.Controls.Add(this.LaunchBtn);
+            this.Controls.Add(this.GoVersionCombo);
             this.Controls.Add(this.WBBtn);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.versionLabel);
@@ -837,6 +855,7 @@ namespace Contra
         #endregion
 
         private System.Windows.Forms.Button LaunchBtn;
+        private System.Windows.Forms.ComboBox GoVersionCombo;
         private System.Windows.Forms.Button ExitBtn;
         private System.Windows.Forms.RadioButton RadioEN;
         private System.Windows.Forms.RadioButton RadioRU;

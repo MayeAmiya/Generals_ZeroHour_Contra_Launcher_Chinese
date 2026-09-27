@@ -277,25 +277,13 @@ namespace Contra.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool GoClientMode {
+        [global::System.Configuration.DefaultSettingValueAttribute("Default")]
+        public string GoVersion {
             get {
-                return ((bool)(this["GoClientMode"]));
+                return ((string)(this["GoVersion"]));
             }
             set {
-                this["GoClientMode"] = value;
-            }
-        }
-
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool GoUnlimitedCamera {
-            get {
-                return ((bool)(this["GoUnlimitedCamera"]));
-            }
-            set {
-                this["GoUnlimitedCamera"] = value;
+                this["GoVersion"] = value;
             }
         }
 

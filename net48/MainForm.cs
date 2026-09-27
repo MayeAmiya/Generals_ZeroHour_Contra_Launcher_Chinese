@@ -27,6 +27,12 @@ namespace Contra
         {
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
             InitializeComponent();
+
+            // Version selector next to the LAUNCH button: which build starts. Selection is
+            // persisted immediately so it survives crashes and machine switches.
+            GoVersionCombo.SelectedIndex = GoVersionToIndex(Properties.Settings.Default.GoVersion);
+            GoVersionCombo.SelectedIndexChanged += GoVersionCombo_SelectedIndexChanged;
+
             SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
             Application.ApplicationExit += new EventHandler(OnApplicationExit);
             LaunchBtn.TabStop = false;
@@ -1836,6 +1842,31 @@ namespace Contra
             return true;
         }
 
+        /// <summary>
+        ///     Version selector values, index-aligned with the GoVersionCombo items:
+        ///     0 = vanilla Contra via the generals.ctr swap, 1 = the official Generals Online
+        ///     client (EAC wrapper or GeneralsOnlineZH_60.exe), 2 = our modified
+        ///     GeneralsOnlineZH_Unlimited.exe.
+        /// </summary>
+        internal static readonly string[] GoVersionValues = { "Default", "GeneralsOnline", "GeneralsOnlineUnlimited" };
+
+        internal static bool IsGoVersion
+        {
+            get { return !"Default".Equals(Properties.Settings.Default.GoVersion, StringComparison.OrdinalIgnoreCase); }
+        }
+
+        private static int GoVersionToIndex(string value)
+        {
+            int index = Array.IndexOf(GoVersionValues, value ?? "");
+            return index < 0 ? 0 : index;
+        }
+
+        private void GoVersionCombo_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            Properties.Settings.Default.GoVersion = GoVersionValues[GoVersionCombo.SelectedIndex];
+            Properties.Settings.Default.Save();
+        }
+
         public void StartGenerals()
         {
             // Check for .dll files
@@ -1848,11 +1879,11 @@ namespace Contra
                 return;
             }
 
-            // Generals Online launches its own client executables; the vanilla generals.ctr swap
-            // below must never touch them.
-            if (Properties.Settings.Default.GoClientMode)
+            // The version dropdown decides the target; the vanilla generals.ctr swap below
+            // must only ever run for the "默认" (Default) entry.
+            if (IsGoVersion)
             {
-                StartGeneralsOnline();
+                StartGeneralsOnline(Properties.Settings.Default.GoVersion == "GeneralsOnlineUnlimited");
                 return;
             }
 
@@ -1931,10 +1962,8 @@ namespace Contra
         ///     modified executables. GO chains its processes, so the window restore follows the
         ///     real client process rather than the process we started.
         /// </summary>
-        private void StartGeneralsOnline()
+        private void StartGeneralsOnline(bool unlimited)
         {
-            bool unlimited = Properties.Settings.Default.GoUnlimitedCamera;
-
             string fileName;
             if (unlimited)
             {
