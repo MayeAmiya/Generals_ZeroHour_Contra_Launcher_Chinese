@@ -160,11 +160,13 @@ namespace Contra
 
         string currentFileLabel;
         string newVersion, genToolFileName = "";
-        // TheSuperHackers @feature All update traffic moves to our own S3 bucket. Paste the
-        // bucket's public base URL here (it must end with '/'); while it stays empty the
-        // self-update and repair download channels stay dormant and the launcher runs on
-        // locally bundled files only.
-        internal const string S3_BaseUrl = ""; // e.g. "https://contra-update-bucket.s3.amazonaws.com/"
+        // TheSuperHackers @feature All update traffic moves to our own Cloudflare R2 bucket
+        // "contrax-release" behind dl.mayeamiya.dev (S3-compatible). The versions file must sit
+        // at the bucket root (Versions_X.txt, same "Launcher: x.y.z$..." format as upstream),
+        // Contra_Launcher.zip next to it; missing engine/mod repair files are addressed relative
+        // to the same base URL via Contra_FileList.txt. While the files are not uploaded the
+        // update and MOTD checks simply fail silently and the launcher runs on local files.
+        internal const string S3_BaseUrl = "https://dl.mayeamiya.dev/";
         string versions_url = string.IsNullOrEmpty(S3_BaseUrl) ? null : S3_BaseUrl + "Versions_X.txt";
         string launcher_url = S3_BaseUrl;
         string patch_url = "http://contra.cncguild.net/Downloads/";
