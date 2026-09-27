@@ -51,7 +51,7 @@ Requires Windows and one of the following SDKs:
 dotnet publish /p:Configuration=Release netcore/netcore.csproj
 ```
 
-Build Location: `netcore\bin\Release\net10.0-windows\win-x86\publish\Contra_Launcher.exe`（需目标机安装 .NET 10 Desktop Runtime）
+Build Location: `netcore\bin\Release\net10.0-windows\win-x86\publish\Contra_Launcher.exe`（自包含 win-x86 单文件，目标机无需安装 .NET 运行时 / self-contained single file, no runtime install needed）
 
 **.NET Framework 4.8** (net48)
 
