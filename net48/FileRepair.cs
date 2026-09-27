@@ -162,7 +162,11 @@ namespace Contra
                             progress.SetFile(entry.RelativePath, 0);
                             progress.ClearStats();
 
-                            if (File.Exists(target))
+                            // Mod files toggle between .ctr (inactive) and .big (activated by
+                            // the option renames on every launch), so presence is matched on
+                            // the file NAME with either extension - matching the exact .ctr
+                            // name only would re-download every activated file on each start.
+                            if (File.Exists(target) || File.Exists(AlternateCtrBigPath(target)))
                                 continue; // present: existence-only, skip entirely
 
                             Directory.CreateDirectory(Path.GetDirectoryName(target));
@@ -173,6 +177,7 @@ namespace Contra
                             totalBytes += fileSize;
 
                             long fileStartOverall = overallReceived;
+                            Stopwatch fileWatch = Stopwatch.StartNew();
                             await owner.DownloadFile(entry.Url, target, TimeSpan.FromMinutes(30),
                                 progress.Cancellation.Token, (received, total) =>
                                 {
@@ -180,7 +185,14 @@ namespace Contra
 
                                     int percent = total > 0 ? (int)Math.Min(100, received * 100 / total) : 0;
                                     progress.SetFile(entry.RelativePath, percent);
-                                    progress.SetStats(received, total, 0, "");
+
+                                    // Per-file speed and remaining time, averaged over the whole
+                                    // file so far so the readout stays stable.
+                                    double fileElapsed = fileWatch.Elapsed.TotalSeconds;
+                                    double fileSpeed = fileElapsed > 0.3 ? received / fileElapsed : 0;
+                                    long fileRemaining = Math.Max(0, total - received);
+                                    progress.SetStats(received, total, fileSpeed,
+                                        fileSpeed > 1 ? FormatDuration(fileRemaining / fileSpeed) : "--:--");
 
                                     double elapsed = sessionWatch.Elapsed.TotalSeconds;
                                     double speed = elapsed > 0.5 ? overallReceived / elapsed : 0;
@@ -551,6 +563,20 @@ namespace Contra
             }
 
             return entries;
+        }
+
+        /// <summary>
+        ///     Returns the same path with the .ctr/.big extension swapped (the launcher's
+        ///     option system renames mod files between the two); paths without either
+        ///     extension are returned unchanged.
+        /// </summary>
+        private static string AlternateCtrBigPath(string path)
+        {
+            if (path.EndsWith(".ctr", StringComparison.OrdinalIgnoreCase))
+                return path.Substring(0, path.Length - 4) + ".big";
+            if (path.EndsWith(".big", StringComparison.OrdinalIgnoreCase))
+                return path.Substring(0, path.Length - 4) + ".ctr";
+            return path;
         }
 
         /// <summary>
