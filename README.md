@@ -14,8 +14,10 @@ The dropdown next to the LAUNCH button picks which build starts (persisted immed
 | 选项 / Option | 启动目标 / Target |
 | --- | --- |
 | `将军原版` (GeneralsOriginal) | 原版 Contra（generals.ctr 交换启动）/ Vanilla Contra via the generals.ctr swap |
-| `GeneralsOnline` | 官方将军在线客户端（按 settings.json 的 anticheat 配置走 EAC 包装器或 `GeneralsOnlineZH_60.exe`）/ Official GO client (EAC wrapper or `GeneralsOnlineZH_60.exe`) |
-| `GeneralsOnlineUnlimited` | 修改版 `GeneralsOnlineZH_Unlimited.exe`（无限制镜头，自动去除反作弊插件——EAC 拒绝修改过的可执行文件）/ Our modified unlimited client (anticheat plugin dropped, since EAC rejects modified executables) |
+| `将军在线` (GeneralsOnline) | 官方将军在线客户端（按 settings.json 的 anticheat 配置走 EAC 包装器或 `GeneralsOnlineZH_60.exe`）/ Official GO client (EAC wrapper or `GeneralsOnlineZH_60.exe`) |
+| `将军无限` (GeneralsOnlineUnlimited) | 修改版 `GeneralsOnlineZH_Unlimited.exe`（无限制镜头，自动去除反作弊插件——EAC 拒绝修改过的可执行文件）/ Our modified unlimited client (anticheat plugin dropped, since EAC rejects modified executables) |
+
+语言面板：当前语言的国旗会显示为中文国旗，点击它即可切换到中文界面；切换后该国旗恢复原样。/ The active language's flag displays the Chinese flag; clicking it switches the launcher to Chinese.
 
 ### 镜头控制 / Camera control
 - 俯仰角与拉远高度滑块：原版模式写入 GenTool 的 `d3d8.cfg`（`[gentool76]` 节与平面键同步管理、去重、窗口预设固定 TOP），GO 模式写入客户端 `settings.json` 的 `camera` 对象。
@@ -28,9 +30,11 @@ The dropdown next to the LAUNCH button picks which build starts (persisted immed
 - / A combined MSAA + filter tier persisted through the `AntiAliasing` key the GO client reads; resolution and windowed arguments follow the launch.
 
 ### 自更新与安装修复 / Self-update & install repair
+- 在线清单：启动器直接解析 `https://dl.mayeamiya.dev/index.html` 的下载链接（无需本地文件列表），按分组还原文件——`GeneralsOnlineUnlimited`（引擎 + 官方 GO 客户端）、`ContraXBeta2Patch1`（模组）、`GenTool_v8.9`（GenTool）。通过 HTTP HEAD 的 ETag + 大小比对版本（缓存在 `Contra_RemoteCache.txt`），文件缺失或上游更新时自动重新下载。
+- 首次安装：无 `Contra_Installed.marker` 时要求目录干净（空，允许 `runtime_lib\`），目录不干净会双语提示并退出；完整安装成功后写入标记，之后的启动进入检查修复模式。
+- 基础游戏文件（将军原版 / 绝命时刻）内嵌在启动器内，从注册表定位的本机安装修复：同盘优先硬链接，跨盘复制；清单来源完全缺失时报告错误。
+- 运行库：启动器检测 VC++ 2015-2022 x86 与 legacy DirectX（d3dx9），缺失时优先使用本地 `runtime_lib\` 安装包，否则从微软官方链接下载安装。
 - 更新渠道：Cloudflare R2 桶 `contrax-release`（`https://dl.mayeamiya.dev/`）。启动器读取桶根目录的 `Versions_X.txt`（`Launcher: x.y.z$...` 格式），有新版本时下载 `Contra_Launcher.zip` 解压并重启；MOTD（公告）同样来自该文件。桶内容未就绪时全部静默跳过。
-- `Contra_FileList.txt`（放在启动器旁）驱动的安装校验：缺失文件按分类补全——`ZH_GENERALS`/`ZH` 从注册表定位的本机安装拷贝（零售 EA App、Steam `ZeroHour` 键、十周年版；32/64 位视图都查），`ENGINE`/`MOD` 从 R2 下载。清单缺失时功能休眠。
-- / Updates and MOTD come from our R2 bucket; a manifest next to the launcher (`Contra_FileList.txt`) repairs missing files by copying from registry-located local installs or downloading from R2.
 
 ### 其他 / Misc
 - 简体中文界面自动跟随系统区域；GO 客户端 `settings.json` 首次启动自动生成；GenTool 相机写入兼容 7.6+ 布局。

@@ -33,6 +33,14 @@ namespace Contra
             GoVersionCombo.SelectedIndex = GoVersionToIndex(Properties.Settings.Default.GoVersion);
             GoVersionCombo.SelectedIndexChanged += GoVersionCombo_SelectedIndexChanged;
 
+            // The flag of the active language doubles as the Chinese switch (see
+            // UpdateFlagImages): clicking it jumps to Chinese when it is not active already.
+            RadioFlag_GB.Click += RadioFlag_AliasClick;
+            RadioFlag_RU.Click += RadioFlag_AliasClick;
+            RadioFlag_UA.Click += RadioFlag_AliasClick;
+            RadioFlag_BG.Click += RadioFlag_AliasClick;
+            RadioFlag_DE.Click += RadioFlag_AliasClick;
+
             SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
             Application.ApplicationExit += new EventHandler(OnApplicationExit);
             LaunchBtn.TabStop = false;
@@ -371,6 +379,7 @@ namespace Contra
             if (!string.IsNullOrEmpty(languageCode))
                 SetLanguage(languageCode);
             UpdateGoVersionComboDisplay();
+            UpdateFlagImages();
             applyTexts?.Invoke();
             SaveLanguageSelection();
             try { RetrieveMOTD(); }
@@ -1589,49 +1598,104 @@ namespace Contra
             Url_open(Globals.myDocPath);
         }
 
+        // The flag panel has no Chinese slot, so the flag of the CURRENTLY ACTIVE language
+        // displays the Chinese flag instead: clicking it switches to Chinese, and it reverts
+        // to its own country's flag once Chinese is the active language.
+        private RadioButton cnAliasFlag;
+
+        private void FlagMouseEnter(RadioButton flag, System.Drawing.Image ownHover)
+        {
+            flag.BackgroundImage = flag == cnAliasFlag ? Properties.Resources.flag_cn_tr : ownHover;
+        }
+
+        private void FlagMouseLeave(RadioButton flag, System.Drawing.Image ownNormal)
+        {
+            flag.BackgroundImage = flag == cnAliasFlag ? Properties.Resources.flag_cn : ownNormal;
+        }
+
+        /// <summary>
+        ///     Clicking the flag that currently displays the Chinese flag (i.e. the active
+        ///     language's own flag) switches the launcher to Chinese.
+        /// </summary>
+        private void RadioFlag_AliasClick(object sender, EventArgs e)
+        {
+            RadioButton flag = sender as RadioButton;
+            if (flag != null && flag.Checked && Globals.currentLanguage != "CN")
+                RadioFlag_CN.Checked = true;
+        }
+
+        /// <summary>
+        ///     Resets every flag to its own country image and overlays the Chinese flag onto
+        ///     the active language's flag (never when Chinese itself is active).
+        /// </summary>
+        private void UpdateFlagImages()
+        {
+            cnAliasFlag = null;
+
+            RadioFlag_GB.BackgroundImage = Properties.Resources.flag_gb;
+            RadioFlag_RU.BackgroundImage = Properties.Resources.flag_ru;
+            RadioFlag_UA.BackgroundImage = Properties.Resources.flag_ua;
+            RadioFlag_BG.BackgroundImage = Properties.Resources.flag_bg;
+            RadioFlag_DE.BackgroundImage = Properties.Resources.flag_de;
+
+            RadioButton active;
+            switch (Globals.currentLanguage)
+            {
+                case "EN": active = RadioFlag_GB; break;
+                case "RU": active = RadioFlag_RU; break;
+                case "UA": active = RadioFlag_UA; break;
+                case "BG": active = RadioFlag_BG; break;
+                case "DE": active = RadioFlag_DE; break;
+                default: return; // Chinese (or unset): every flag stays its own
+            }
+
+            active.BackgroundImage = Properties.Resources.flag_cn;
+            cnAliasFlag = active;
+        }
+
         private void RadioFlag_GB_MouseEnter(object sender, EventArgs e)
         {
-            RadioFlag_GB.BackgroundImage = Properties.Resources.flag_gb_tr;
+            FlagMouseEnter(RadioFlag_GB, Properties.Resources.flag_gb_tr);
         }
         private void RadioFlag_GB_MouseLeave(object sender, EventArgs e)
         {
-            RadioFlag_GB.BackgroundImage = Properties.Resources.flag_gb;
+            FlagMouseLeave(RadioFlag_GB, Properties.Resources.flag_gb);
         }
 
         private void RadioFlag_RU_MouseEnter(object sender, EventArgs e)
         {
-            RadioFlag_RU.BackgroundImage = Properties.Resources.flag_ru_tr;
+            FlagMouseEnter(RadioFlag_RU, Properties.Resources.flag_ru_tr);
         }
         private void RadioFlag_RU_MouseLeave(object sender, EventArgs e)
         {
-            RadioFlag_RU.BackgroundImage = Properties.Resources.flag_ru;
+            FlagMouseLeave(RadioFlag_RU, Properties.Resources.flag_ru);
         }
 
         private void RadioFlag_UA_MouseEnter(object sender, EventArgs e)
         {
-            RadioFlag_UA.BackgroundImage = Properties.Resources.flag_ua_tr;
+            FlagMouseEnter(RadioFlag_UA, Properties.Resources.flag_ua_tr);
         }
         private void RadioFlag_UA_MouseLeave(object sender, EventArgs e)
         {
-            RadioFlag_UA.BackgroundImage = Properties.Resources.flag_ua;
+            FlagMouseLeave(RadioFlag_UA, Properties.Resources.flag_ua);
         }
 
         private void RadioFlag_BG_MouseEnter(object sender, EventArgs e)
         {
-            RadioFlag_BG.BackgroundImage = Properties.Resources.flag_bg_tr;
+            FlagMouseEnter(RadioFlag_BG, Properties.Resources.flag_bg_tr);
         }
         private void RadioFlag_BG_MouseLeave(object sender, EventArgs e)
         {
-            RadioFlag_BG.BackgroundImage = Properties.Resources.flag_bg;
+            FlagMouseLeave(RadioFlag_BG, Properties.Resources.flag_bg);
         }
 
         private void RadioFlag_DE_MouseEnter(object sender, EventArgs e)
         {
-            RadioFlag_DE.BackgroundImage = Properties.Resources.flag_de_tr;
+            FlagMouseEnter(RadioFlag_DE, Properties.Resources.flag_de_tr);
         }
         private void RadioFlag_DE_MouseLeave(object sender, EventArgs e)
         {
-            RadioFlag_DE.BackgroundImage = Properties.Resources.flag_de;
+            FlagMouseLeave(RadioFlag_DE, Properties.Resources.flag_de);
         }
 
         private void RadioFlag_CN_MouseEnter(object sender, EventArgs e)
@@ -1981,13 +2045,17 @@ namespace Contra
         }
 
         /// <summary>
-        ///     First dropdown item shows 将军原版 in Chinese, GeneralsOriginal elsewhere.
-        ///     Replacing an item resets SelectedIndex, so it is restored afterwards.
+        ///     Localizes the version dropdown: Chinese shows 将军原版 / 将军在线 / 将军无限,
+        ///     other languages keep the English identifiers. Replacing an item resets
+        ///     SelectedIndex, so it is restored afterwards.
         /// </summary>
         private void UpdateGoVersionComboDisplay()
         {
             int selected = GoVersionCombo.SelectedIndex;
-            GoVersionCombo.Items[0] = Globals.currentLanguage == "CN" ? "将军原版" : "GeneralsOriginal";
+            bool cn = Globals.currentLanguage == "CN";
+            GoVersionCombo.Items[0] = cn ? "将军原版" : "GeneralsOriginal";
+            GoVersionCombo.Items[1] = cn ? "将军在线" : "GeneralsOnline";
+            GoVersionCombo.Items[2] = cn ? "将军无限" : "GeneralsOnlineUnlimited";
             if (GoVersionCombo.SelectedIndex != selected && selected >= 0)
                 GoVersionCombo.SelectedIndex = selected;
         }
@@ -2718,7 +2786,7 @@ namespace Contra
             // TheSuperHackers @feature Manifest-driven install repair: restore missing base-game
             // files from the registry-located retail/Steam installs and download missing engine
             // or mod files from our S3 bucket, before the user can launch anything broken.
-            await FileRepair.RunAsync();
+            await FileRepair.RunAsync(this);
 
             // Make 2 copies of Options.ini, name them Options_ZH.ini and Options_CTR.ini
             if (File.Exists(Globals.myDocPath + "Options.ini") && !File.Exists(Globals.myDocPath + "Options_ZH.ini") && !File.Exists(Globals.myDocPath + "Options_CTR.ini"))
