@@ -2539,8 +2539,26 @@ namespace Contra
         ///     5+/ICU a Simplified Chinese system reports "zh-Hans-CN", which matches neither
         ///     the legacy "zh-CN" nor "zh-Hans" equality checks and silently broke detection.
         /// </summary>
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+        private static extern ushort GetUserDefaultUILanguage();
+
+        /// <summary>
+        ///     True when the machine's display language is Chinese. Asks Windows directly
+        ///     (primary language id 0x04 covers zh-CN / zh-Hans-CN / zh-Hans ...) because the
+        ///     thread cultures are MUTATED during startup - the Form1_Load settings restore
+        ///     applies the saved language and switches CurrentUICulture before detection
+        ///     runs, which made every culture-based check report the saved language instead
+        ///     of the system's. Culture checks stay as a fallback.
+        /// </summary>
         private static bool IsChineseSystemLanguage()
         {
+            try
+            {
+                if ((GetUserDefaultUILanguage() & 0x3FF) == 0x0004) // LANG_CHINESE
+                    return true;
+            }
+            catch { }
+
             try
             {
                 return CultureInfo.CurrentUICulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
