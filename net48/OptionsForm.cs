@@ -671,6 +671,38 @@ namespace Contra
         }
 
         public static Tuple<int, int> getScreenResolution() => Tuple.Create(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
+
+        /// <summary>
+        ///     Writes the launcher's persisted Resolution choice into Options.ini right
+        ///     before a game starts: the Options_CTR/Options_ZH swap at startup and the
+        ///     games themselves both rewrite the file, so without this the picked
+        ///     resolution silently reverts to whatever the last swap contained.
+        /// </summary>
+        public static void ApplyLauncherResolutionToIni()
+        {
+            try
+            {
+                string resolution = Properties.Settings.Default.Res;
+                if (string.IsNullOrWhiteSpace(resolution)
+                    || !Regex.IsMatch(resolution, @"^[0-9]{3,4} [0-9]{3,4}$"))
+                    return;
+
+                string path = Globals.myDocPath + "Options.ini";
+                if (!File.Exists(path))
+                    return;
+
+                OptionsIniFile document = OptionsIniFile.Load(path);
+                if (document == null)
+                    return;
+
+                document.Set("Resolution", resolution);
+                document.Save(path);
+            }
+            catch
+            {
+                // A failed resolution write must never block the game launch.
+            }
+        }
         int x = getScreenResolution().Item1;
         int y = getScreenResolution().Item2;
 
@@ -835,6 +867,10 @@ namespace Contra
                         Regex.Replace(File.ReadAllText(Globals.myDocPath + "Options.ini"),
                         "\r?\nResolution =.*", "\r\nResolution = " + fixedText + "\r",
                         RegexOptions.IgnoreCase));
+
+                    // Persist the pick so the launch paths can re-apply it after any
+                    // Options.ini swap (Options_CTR/Options_ZH) clobbers the file.
+                    Properties.Settings.Default.Res = fixedText;
                 }
                 else
                 {

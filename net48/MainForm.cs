@@ -2191,6 +2191,10 @@ namespace Contra
                         OptionsForm.WriteD3D8Config(Properties.Settings.Default.GoCameraPitch,
                             Properties.Settings.Default.GoCameraMaxHeight);
 
+                    // Apply the launcher's persisted resolution (and any Options.ini keys the
+                    // launcher owns) after every swap that touched the file.
+                    OptionsForm.ApplyLauncherResolutionToIni();
+
                     WindowState = FormWindowState.Minimized;
                     try
                     {
@@ -2265,6 +2269,10 @@ namespace Contra
             {
                 OptionsForm.WriteGoCameraSettings(0, 0);
             }
+
+            // Apply the launcher's persisted resolution: the GO client reads Options.ini too
+            // (and -xres/-yres mirror it for windowed launches).
+            OptionsForm.ApplyLauncherResolutionToIni();
 
             Process generals = new Process();
             generals.StartInfo.FileName = fileName;
