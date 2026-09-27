@@ -45,6 +45,15 @@ namespace Contra
 
         internal const string RemoteIndexUrl = "https://dl.mayeamiya.dev/index.html";
 
+        /// <summary>The official Contra broadcast (bottom marquee) source, upstream repository.</summary>
+        internal const string OfficialMOTDUrl = "https://raw.githubusercontent.com/ContraMod/Launcher/master/Versions_X.txt";
+
+        /// <summary>Single-language text picker: everything the user sees follows the launcher language.</summary>
+        private static string L(string cn, string en)
+        {
+            return Globals.currentLanguage == "CN" ? cn : en;
+        }
+
         private class RepairResult
         {
             public string Path;
@@ -78,14 +87,11 @@ namespace Contra
                 return true; // clean folder: the bootstrap will run in RunAsync
 
             MessageBox.Show(new Form { TopMost = true },
-                "首次安装要求启动器位于干净（空）的文件夹中。\n" +
-                "当前文件夹包含： " + notClean + "\n\n" +
-                "请将 Contra_Launcher_New.exe 移入空文件夹后重新运行。\n" +
-                "已安装的目录（含 Contra_Installed.marker）会自动进入检查修复模式。\n\n" +
-                "First install requires the launcher to sit in a clean (empty) folder.\n" +
-                "This folder contains: " + notClean + "\n" +
-                "Move Contra_Launcher_New.exe into an empty folder and run again.\n" +
-                "Installed folders (with Contra_Installed.marker) switch to check/repair mode automatically.",
+                L("首次安装要求启动器位于干净（空）的文件夹中。\n当前文件夹包含： ",
+                  "First install requires the launcher to sit in a clean (empty) folder.\nThis folder contains: ")
+                + notClean + "\n\n" +
+                L("请将 Contra_Launcher_New.exe 移入空文件夹后重新运行。\n已安装的目录（含 Contra_Installed.marker）会自动进入检查修复模式。",
+                  "Move Contra_Launcher_New.exe into an empty folder and run again.\nInstalled folders (with Contra_Installed.marker) switch to check/repair mode automatically."),
                 "Contra Launcher", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             Application.Exit();
             return false;
@@ -131,110 +137,97 @@ namespace Contra
                     RestoreSteamExtras(baseDir, zhInstalls, repaired, failed);
 
                     // Phase 2: online content (engine, mod, GenTool) from the R2 index.
+                    // Existence-only ("只查少"): a missing file is downloaded once; present
+                    // files are never re-verified or re-fetched, and extra local files are
+                    // nobody's business. Network permitting; otherwise reported as failures.
                     List<RemoteEntry> remote = await LoadRemoteIndex();
-                    progress.SetPhase("正在同步在线文件 / syncing online files");
-                    if (remote.Count > 0)
+                    progress.SetTotal(totalFiles + remote.Count);
+                    progress.SetPhase(L("正在同步在线文件", "Syncing online files"));
+
+                    long totalBytes = 0, overallReceived = 0;
+                    Stopwatch sessionWatch = Stopwatch.StartNew();
+                    bool cancelled = false;
+
+                    foreach (RemoteEntry entry in remote)
                     {
-                        Dictionary<string, string> cache = LoadRemoteCache(baseDir);
-                        bool cacheDirty = false;
-
-                        foreach (RemoteEntry entry in remote)
+                        if (progress.Cancellation.IsCancellationRequested)
                         {
-                            try
-                            {
-                                progress.SetFile(entry.RelativePath, 0);
-                                progress.ClearStats();
-
-                                string target = Path.Combine(baseDir, entry.RelativePath.Replace('/', '\\'));
-                                string cacheKey = entry.Url;
-
-                                if (File.Exists(target))
-                                {
-                                    string[] current = await HeadRemote(entry.Url);
-                                    if (current == null)
-                                        continue; // index unreachable for this file; keep what we have
-
-                                    string cached;
-                                    cache.TryGetValue(cacheKey, out cached);
-
-                                    if (cached != null && cached == current[0] + "\t" + current[1])
-                                    {
-                                        // present and still the same version
-                                        done++;
-                                        progress.SetOverall(done, totalFiles);
-                                        continue;
-                                    }
-
-                                    if (cached == null)
-                                    {
-                                        // Pre-existing file with no download history: accept it and
-                                        // start tracking from here on.
-                                        cache[cacheKey] = current[0] + "\t" + current[1];
-                                        cacheDirty = true;
-                                        done++;
-                                        progress.SetOverall(done, totalFiles);
-                                        continue;
-                                    }
-
-                                    // Cached version differs from the index: outdated, re-fetch below.
-                                    progress.SetPhase("正在更新在线文件 / updating outdated files");
-                                }
-
-                                Directory.CreateDirectory(Path.GetDirectoryName(target));
-
-                                Stopwatch downloadWatch = Stopwatch.StartNew();
-                                long lastReported = 0;
-                                await owner.DownloadFile(entry.Url, target, TimeSpan.FromMinutes(30),
-                                    CancellationToken.None, (received, total) =>
-                                    {
-                                        if (total <= 0)
-                                            return;
-
-                                        // ~1s smoothing window so the speed readout stays readable.
-                                        double elapsed = downloadWatch.Elapsed.TotalSeconds;
-                                        double speed = elapsed > 0.3 ? received / elapsed : 0;
-                                        long remaining = total - received;
-                                        string eta = speed > 1 ? FormatDuration(remaining / speed) : "--:--";
-                                        progress.SetFile(entry.RelativePath,
-                                            total > 0 ? (int)Math.Min(100, received * 100 / total) : 0);
-                                        progress.SetStats(received, total, speed, eta);
-                                        lastReported = received;
-                                    });
-
-                                string[] after = await HeadRemote(entry.Url);
-                                if (after != null)
-                                {
-                                    cache[cacheKey] = after[0] + "\t" + after[1];
-                                    cacheDirty = true;
-                                }
-
-                                repaired.Add(new RepairResult { Path = entry.RelativePath });
-                                done++;
-                                progress.SetOverall(done, totalFiles);
-                            }
-                            catch (Exception ex)
-                            {
-                                failed.Add(new RepairResult { Path = entry.RelativePath, Error = ex.Message });
-                                done++;
-                                progress.SetOverall(done, totalFiles);
-                            }
+                            cancelled = true;
+                            break;
                         }
 
-                        if (cacheDirty)
-                            SaveRemoteCache(baseDir, cache);
+                        string target = Path.Combine(baseDir, entry.RelativePath.Replace('/', '\\'));
+                        try
+                        {
+                            progress.SetFile(entry.RelativePath, 0);
+                            progress.ClearStats();
+
+                            if (File.Exists(target))
+                                continue; // present: existence-only, skip entirely
+
+                            Directory.CreateDirectory(Path.GetDirectoryName(target));
+
+                            // Size for the overall ETA; the download itself follows.
+                            string[] head = await HeadRemote(entry.Url);
+                            long fileSize = head != null ? long.Parse(head[1]) : 0;
+                            totalBytes += fileSize;
+
+                            long fileStartOverall = overallReceived;
+                            await owner.DownloadFile(entry.Url, target, TimeSpan.FromMinutes(30),
+                                progress.Cancellation.Token, (received, total) =>
+                                {
+                                    overallReceived = fileStartOverall + received;
+
+                                    int percent = total > 0 ? (int)Math.Min(100, received * 100 / total) : 0;
+                                    progress.SetFile(entry.RelativePath, percent);
+                                    progress.SetStats(received, total, 0, "");
+
+                                    double elapsed = sessionWatch.Elapsed.TotalSeconds;
+                                    double speed = elapsed > 0.5 ? overallReceived / elapsed : 0;
+                                    long remaining = Math.Max(0, totalBytes - overallReceived);
+                                    progress.SetOverallStats(overallReceived, totalBytes, speed,
+                                        speed > 1 ? FormatDuration(remaining / speed) : "--:--");
+                                });
+
+                            repaired.Add(new RepairResult { Path = entry.RelativePath });
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // A cancelled download leaves a partial file behind; remove it so
+                            // the next start re-downloads from scratch.
+                            try { if (File.Exists(target)) File.Delete(target); } catch { }
+                            cancelled = true;
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            failed.Add(new RepairResult { Path = entry.RelativePath, Error = ex.Message });
+                        }
+                        finally
+                        {
+                            done++;
+                            progress.SetOverall(done);
+                        }
                     }
 
-                    // The marker is only written once a bootstrap completed without failures; a
-                    // failed install retries the whole bootstrap on the next start.
-                    if (!File.Exists(Path.Combine(baseDir, MarkerFileName)) && failed.Count == 0)
+                    if (!cancelled)
                     {
-                        try { File.WriteAllText(Path.Combine(baseDir, MarkerFileName), DateTime.Now.ToString("s")); }
-                        catch { }
-                    }
+                        progress.ClearOverallStats();
+                        progress.SetFile("", 100);
 
-                    // Success notice lives in the progress window itself - no extra dialog.
-                    if (failed.Count == 0 && repaired.Count > 0)
-                        progress.ShowCompleteThenClose(1800);
+                        // The marker is written after the very first pass no matter what: even
+                        // with failures the folder is now launcher-managed and every later start
+                        // runs in check/repair mode instead of hitting the clean-folder gate.
+                        if (!File.Exists(Path.Combine(baseDir, MarkerFileName)))
+                        {
+                            try { File.WriteAllText(Path.Combine(baseDir, MarkerFileName), DateTime.Now.ToString("s")); }
+                            catch { }
+                        }
+
+                        // Success notice lives in the progress window itself - no extra dialog.
+                        if (repaired.Count > 0 && failed.Count == 0)
+                            progress.ShowCompleteThenClose(1800);
+                    }
                 }
                 finally
                 {
@@ -293,7 +286,7 @@ namespace Contra
                             Path = "ZH_Generals -> " + install + " (junction)"
                         });
                         done++;
-                        progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
+                        progress.SetOverall(done);
                         return; // everything below the junction exists now
                     }
                 }
@@ -314,7 +307,7 @@ namespace Contra
                     {
                         done++;
                         progress.SetFile("ZH_Generals\\" + relativePath, 100);
-                        progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
+                        progress.SetOverall(done);
                         continue;
                     }
 
@@ -326,13 +319,13 @@ namespace Contra
 
                     done++;
                     progress.SetFile("ZH_Generals\\" + relativePath, 100);
-                    progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
+                    progress.SetOverall(done);
                 }
                 catch (Exception ex)
                 {
                     failed.Add(new RepairResult { Path = "ZH_Generals\\" + relativePath, Error = ex.Message });
                     done++;
-                    progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
+                    progress.SetOverall(done);
                 }
             }
         }
@@ -441,7 +434,7 @@ namespace Contra
                     {
                         done++;
                         progress.SetFile(relativePath, 100);
-                        progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
+                        progress.SetOverall(done);
                         continue;
                     }
 
@@ -453,13 +446,13 @@ namespace Contra
 
                     done++;
                     progress.SetFile(relativePath, 100);
-                    progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
+                    progress.SetOverall(done);
                 }
                 catch (Exception ex)
                 {
                     failed.Add(new RepairResult { Path = relativePath, Error = ex.Message });
                     done++;
-                    progress.SetOverall(done, BuiltinFileLists.ZhGeneralsFiles.Length + BuiltinFileLists.ZeroHourFiles.Length);
+                    progress.SetOverall(done);
                 }
             }
         }
@@ -469,8 +462,8 @@ namespace Contra
         {
             if (installs.Count == 0)
             {
-                error = "注册表中未找到 " + gameName + " 安装位置 / no " + gameName +
-                        " install found in the registry";
+                error = L("注册表中未找到 " + gameName + " 安装位置",
+                          "no " + gameName + " install found in the registry");
                 return false;
             }
 
@@ -492,8 +485,8 @@ namespace Contra
                 return true;
             }
 
-            error = "注册表给出的 " + gameName + " 目录中也没有该文件 / not found in any registry-located " +
-                    gameName + " install";
+            error = L("注册表给出的 " + gameName + " 目录中也没有该文件",
+                      "not found in any registry-located " + gameName + " install");
             return false;
         }
 
@@ -663,7 +656,8 @@ namespace Contra
 
         private static void ShowFailures(List<RepairResult> failed)
         {
-            string text = "以下缺失文件无法自动修复 (These missing files could not be restored):\n\n";
+            string text = L("以下缺失文件无法自动修复：\n\n",
+                            "These missing files could not be restored:\n\n");
 
             int shown = 0;
             foreach (RepairResult result in failed)
@@ -676,7 +670,8 @@ namespace Contra
                 text += "  [x] " + result.Path + "\n      " + result.Error + "\n";
             }
 
-            text += "\n请检查注册表中的游戏安装或网络连接。(Check your game install registration or network connection.)";
+            text += "\n" + L("请检查注册表中的游戏安装或网络连接。",
+                             "Check your game install registration or network connection.");
 
             try
             {

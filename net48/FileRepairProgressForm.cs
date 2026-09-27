@@ -1,13 +1,15 @@
 using System;
 using System.Drawing;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace Contra
 {
     /// <summary>
-    ///     Bootstrap / repair progress window: what is currently happening, the current
-    ///     file with its progress bar, download speed, remaining time and the overall file
-    ///     count. Top-most so it stays visible during the first install. All updates happen
+    ///     Bootstrap / repair progress window. While it is open the launcher's main form is
+    ///     disabled - the user watches the progress (current file, per-file bar, speed, ETA,
+    ///     overall count) and may cancel the pass; nothing else is interactive. All texts
+    ///     follow the launcher's current language (no bilingual lines). All updates happen
     ///     on the UI thread (the repair pass runs inside Form1_Shown's async context).
     /// </summary>
     internal class FileRepairProgressForm : Form
@@ -17,23 +19,34 @@ namespace Contra
         private readonly ProgressBar fileBar;
         private readonly Label statLabel;
         private readonly Label overallLabel;
+        private readonly Button cancelButton;
+        private readonly bool chinese;
         private int lastPercent = -1;
+        private int totalCount;
+        private int doneCount;
+        private string overallStats;
+
+        /// <summary>Cancels the running repair pass when the user hits the button.</summary>
+        public CancellationTokenSource Cancellation { get; } = new CancellationTokenSource();
 
         /// <summary>True once ShowCompleteThenClose started; the outer finally must not dispose.</summary>
         public bool AutoClosing { get; private set; }
 
         public FileRepairProgressForm(int totalFiles)
         {
+            chinese = Globals.currentLanguage == "CN";
+
             FormBorderStyle = FormBorderStyle.FixedToolWindow;
             StartPosition = FormStartPosition.CenterParent;
             ShowInTaskbar = false;
             TopMost = true;
             MinimizeBox = false;
             MaximizeBox = false;
+            ControlBox = false; // no X: only the cancel button ends the pass early
             DoubleBuffered = true;
             Text = "Contra Launcher";
             BackColor = Color.FromArgb(30, 30, 46);
-            Size = new Size(500, 196);
+            Size = new Size(500, 200);
 
             titleLabel = new Label
             {
@@ -42,7 +55,7 @@ namespace Contra
                 Size = new Size(460, 24),
                 ForeColor = Color.White,
                 Font = new Font("Calibri", 15F, GraphicsUnit.Pixel),
-                Text = "正在检查文件 / checking files",
+                Text = chinese ? "正在检查文件" : "Checking files",
             };
             fileLabel = new Label
             {
@@ -71,10 +84,25 @@ namespace Contra
             {
                 AutoSize = false,
                 Location = new Point(14, 122),
-                Size = new Size(460, 20),
+                Size = new Size(370, 20),
                 ForeColor = Color.White,
                 Font = new Font("Calibri", 13F, GraphicsUnit.Pixel),
                 Text = "",
+            };
+            cancelButton = new Button
+            {
+                Location = new Point(392, 118),
+                Size = new Size(82, 28),
+                Text = chinese ? "取消" : "Cancel",
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(60, 60, 80),
+                ForeColor = Color.White,
+            };
+            cancelButton.Click += (sender, args) =>
+            {
+                Cancellation.Cancel();
+                cancelButton.Enabled = false;
+                titleLabel.Text = chinese ? "正在取消..." : "Cancelling...";
             };
 
             Controls.Add(titleLabel);
@@ -82,11 +110,13 @@ namespace Contra
             Controls.Add(fileBar);
             Controls.Add(statLabel);
             Controls.Add(overallLabel);
+            Controls.Add(cancelButton);
 
-            SetOverall(0, totalFiles);
+            totalCount = totalFiles;
+            RenderOverall();
         }
 
-        /// <summary>Phase caption, e.g. "正在下载 / downloading".</summary>
+        /// <summary>Phase caption in the launcher's language.</summary>
         public void SetPhase(string text)
         {
             titleLabel.Text = text;
@@ -114,7 +144,7 @@ namespace Contra
             if (total > 0)
                 statLabel.Text = FormatSize(received) + " / " + FormatSize(total)
                     + "   ·   " + FormatSize((long)bytesPerSecond) + "/s"
-                    + "   ·   剩余 / ETA " + eta;
+                    + "   ·   " + (chinese ? "剩余 " : "ETA ") + eta;
             else
                 statLabel.Text = "";
         }
@@ -125,9 +155,42 @@ namespace Contra
             statLabel.Text = "";
         }
 
-        public void SetOverall(int done, int total)
+        public void SetOverall(int done)
         {
-            overallLabel.Text = "总进度 / overall: " + done + " / " + total;
+            doneCount = done;
+            RenderOverall();
+        }
+
+        /// <summary>
+        ///     Overall speed / ETA line for the whole sync, rendered next to the count.
+        /// </summary>
+        public void SetOverallStats(long received, long total, double bytesPerSecond, string eta)
+        {
+            if (total > 0)
+                overallStats = FormatSize(received) + " / " + FormatSize(total)
+                    + "   ·   " + FormatSize((long)bytesPerSecond) + "/s"
+                    + "   ·   " + (chinese ? "剩余 " : "ETA ") + eta;
+            else
+                overallStats = "";
+            RenderOverall();
+        }
+
+        public void ClearOverallStats()
+        {
+            overallStats = "";
+            RenderOverall();
+        }
+
+        public void SetTotal(int total)
+        {
+            totalCount = total;
+            RenderOverall();
+        }
+
+        private void RenderOverall()
+        {
+            overallLabel.Text = (chinese ? "总进度: " : "Overall: ") + doneCount + " / " + totalCount
+                + (string.IsNullOrEmpty(overallStats) ? "" : "   ·   " + overallStats);
         }
 
         /// <summary>
@@ -137,15 +200,17 @@ namespace Contra
         public void ShowCompleteThenClose(int milliseconds)
         {
             AutoClosing = true;
-            SetPhase("下载完成 / everything restored");
+            SetPhase(chinese ? "下载完成" : "Everything restored");
             SetFile("", 100);
             ClearStats();
+            ClearOverallStats();
+            cancelButton.Visible = false;
 
-            Timer closeTimer = new Timer { Interval = milliseconds };
+            System.Windows.Forms.Timer closeTimer = new System.Windows.Forms.Timer { Interval = milliseconds };
             closeTimer.Tick += (sender, args) =>
             {
-                ((Timer)sender).Stop();
-                ((Timer)sender).Dispose();
+                ((System.Windows.Forms.Timer)sender).Stop();
+                ((System.Windows.Forms.Timer)sender).Dispose();
                 Close();
             };
             closeTimer.Start();
