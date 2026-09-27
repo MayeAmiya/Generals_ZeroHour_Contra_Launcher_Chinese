@@ -426,7 +426,8 @@ namespace Contra
                     {
                         foreach (ZipArchiveEntry entry in archive.Entries)
                         {
-                            if (entry.Name == "Contra_Launcher.exe") continue;
+                            // Never overwrite the exe we are running from right now.
+                            if (entry.Name == Path.GetFileName(Application.ExecutablePath)) continue;
                             await Task.Run(() => entry.ExtractToFile(entry.Name, true));
                         }
                     }
@@ -2666,14 +2667,14 @@ namespace Contra
             */
 
             // Cleanup old Launcher file after update. The delete is tolerated: when the user
-            // launched the leftover Contra_Launcher_ToDelete.exe itself, the file is locked
+            // launched the leftover Contra_Launcher_New_ToDelete.exe itself, the file is locked
             // by our own process and simply stays for the next start.
-            if (File.Exists(launcherExecutingPath + @"\Contra_Launcher_ToDelete.exe"))
+            if (File.Exists(launcherExecutingPath + @"\Contra_Launcher_New_ToDelete.exe"))
             {
                 try
                 {
-                    File.SetAttributes("Contra_Launcher_ToDelete.exe", FileAttributes.Normal);
-                    File.Delete(launcherExecutingPath + @"\Contra_Launcher_ToDelete.exe");
+                    File.SetAttributes("Contra_Launcher_New_ToDelete.exe", FileAttributes.Normal);
+                    File.Delete(launcherExecutingPath + @"\Contra_Launcher_New_ToDelete.exe");
                 }
                 catch { }
             }
@@ -3025,9 +3026,9 @@ namespace Contra
             // overwrite. Cleanup is now defensive and never crashes the launcher.
             try
             {
-                string versionedExe = Path.Combine(launcherExecutingPath, $"Contra_Launcher_{newVersion}.exe");
-                string currentExe = Path.Combine(launcherExecutingPath, "Contra_Launcher.exe");
-                string toDeleteExe = Path.Combine(launcherExecutingPath, "Contra_Launcher_ToDelete.exe");
+                string versionedExe = Path.Combine(launcherExecutingPath, $"Contra_Launcher_New_{newVersion}.exe");
+                string currentExe = Path.Combine(launcherExecutingPath, "Contra_Launcher_New.exe");
+                string toDeleteExe = Path.Combine(launcherExecutingPath, "Contra_Launcher_New_ToDelete.exe");
 
                 if (applyNewLauncher == false)
                 {

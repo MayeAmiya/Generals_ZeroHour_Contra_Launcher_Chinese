@@ -37,7 +37,7 @@ The dropdown next to the LAUNCH button picks which build starts (persisted immed
 
 ## 使用 / Usage
 
-把启动器放进游戏目录（绝命时刻主目录，Contra X 整合包根目录），直接运行 `Contra_Launcher.exe`。启动器会自动定位文档目录、生成缺失的 `Options.ini` / `settings.json`、校验安装文件，然后按下拉框选中的版本启动。
+把启动器放进游戏目录（绝命时刻主目录，Contra X 整合包根目录），直接运行 `Contra_Launcher_New.exe`。启动器会自动定位文档目录、生成缺失的 `Options.ini` / `settings.json`、校验安装文件，然后按下拉框选中的版本启动。
 
 Place the launcher in the Zero Hour directory (the Contra X distribution root) and run it. It locates the Documents folder, generates missing `Options.ini` / `settings.json`, verifies the installation, then starts whatever the version dropdown selected.
 
@@ -51,7 +51,7 @@ Requires Windows and one of the following SDKs:
 dotnet publish /p:Configuration=Release netcore/netcore.csproj
 ```
 
-Build Location: `netcore\bin\Release\net10.0-windows\win-x86\publish\Contra_Launcher.exe`（自包含 win-x86 单文件，目标机无需安装 .NET 运行时 / self-contained single file, no runtime install needed）
+Build Location: `netcore\bin\Release\net10.0-windows\win-x86\publish\Contra_Launcher_New.exe`（自包含 win-x86 单文件，目标机无需安装 .NET 运行时 / self-contained single file, no runtime install needed）
 
 **.NET Framework 4.8** (net48)
 
@@ -59,7 +59,7 @@ Build Location: `netcore\bin\Release\net10.0-windows\win-x86\publish\Contra_Laun
 msbuild /p:Configuration=Release /p:Platform=AnyCPU net48/net48.csproj
 ```
 
-Build Location: `net48\bin\Release\Contra_Launcher.exe`
+Build Location: `net48\bin\Release\Contra_Launcher_New.exe`
 
 用 Visual Studio 打开解决方案构建亦可 / Building from Visual Studio works as well.
 
@@ -67,13 +67,13 @@ Build Location: `net48\bin\Release\Contra_Launcher.exe`
 
 ```
 Versions_X.txt                          # "Launcher: 2.0.0.8.C1$..."（MOTD 可跟在后面）
-<version>/Contra_Launcher.zip           # 自更新包：内含 Contra_Launcher_<version>.exe
+<version>/Contra_Launcher.zip           # 自更新包：内含 Contra_Launcher_New_<version>.exe
 GeneralsOnlineUnlimited/…               # 无限制引擎 + 官方 GO 客户端 exe
 ContraXBeta2Patch1/…                    # Contra X Beta 2 模组文件
 GenTool_v8.9/…                          # GenTool（d3d8.dll / ReadMe / links）
 ```
 
-- 自更新：启动器比对 `Versions_X.txt` 中的版本与自身 `Application.ProductVersion`，不一致即下载对应版本目录的 `Contra_Launcher.zip`（包内 exe 必须命名为 `Contra_Launcher_<version>.exe`，解压后启动器自动换名重启）。
+- 自更新：启动器比对 `Versions_X.txt` 中的版本与自身 `Application.ProductVersion`，不一致即下载对应版本目录的 `Contra_Launcher.zip`（包内 exe 必须命名为 `Contra_Launcher_New_<version>.exe`，解压后启动器自动换名重启）。
 - 首次安装：启动器在无 `Contra_Installed.marker` 的目录中要求目录干净（空，允许 `runtime_lib\`），完整安装成功后才写入标记；之后的启动进入检查修复模式。
 - `runtime_lib\`：可选。放入 `VC_redist.x86.exe` / `dxwebsetup.exe` 可离线安装运行库；否则启动器从微软官方链接下载。
 - 同盘硬链接：ZH / Generals 文件修复优先创建硬链接（与源安装同卷时），不占额外空间。

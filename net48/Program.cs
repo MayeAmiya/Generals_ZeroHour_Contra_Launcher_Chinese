@@ -15,8 +15,8 @@ namespace Contra
         {
             try
             {
-                // Check if there are any Contra_Launcher processes that started recently (within last 10 seconds)
-                Process[] processes = Process.GetProcessesByName("Contra_Launcher");
+                // Check if there are any Contra_Launcher_New processes that started recently (within last 10 seconds)
+                Process[] processes = Process.GetProcessesByName("Contra_Launcher_New");
                 foreach (Process proc in processes)
                 {
                     if (proc.Id != Process.GetCurrentProcess().Id)
@@ -56,12 +56,12 @@ namespace Contra
                 //Properties.Settings.Default.Reload();
                 // UseShellExecute is false by default on .NET Core and later; shell execution restores the
                 // net48 behaviour of resolving the relative exe name next to the launcher.
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("Contra_Launcher.exe") { UseShellExecute = true });
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("Contra_Launcher_New.exe") { UseShellExecute = true });
                 return;
             }
             Properties.Settings.Default.LangEN = true;
 
-            mutex = new Mutex(false, "Contra_Launcher");
+            mutex = new Mutex(false, "Contra_Launcher_New");
 
             try
             {
@@ -110,7 +110,7 @@ namespace Contra
                                     try
                                     {
                                         mutex.Dispose();
-                                        mutex = new Mutex(false, "Contra_Launcher");
+                                        mutex = new Mutex(false, "Contra_Launcher_New");
                                         mutexAcquired = mutex.WaitOne(1000);
                                     }
                                     catch

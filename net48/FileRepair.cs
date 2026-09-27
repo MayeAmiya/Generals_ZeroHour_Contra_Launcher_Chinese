@@ -78,11 +78,11 @@ namespace Contra
                         MessageBox.Show(new Form { TopMost = true },
                             "首次安装要求启动器位于干净（空）的文件夹中。\n" +
                             "当前文件夹包含： " + notClean + "\n\n" +
-                            "请将 Contra_Launcher.exe 与 Contra_FileList.txt 移入空文件夹后重新运行。\n" +
+                            "请将 Contra_Launcher_New.exe 与 Contra_FileList.txt 移入空文件夹后重新运行。\n" +
                             "已安装的目录（含 Contra_Installed.marker）会自动进入检查修复模式。\n\n" +
                             "First install requires the launcher to sit in a clean (empty) folder.\n" +
                             "This folder contains: " + notClean + "\n" +
-                            "Move Contra_Launcher.exe and Contra_FileList.txt into an empty folder and run again.\n" +
+                            "Move Contra_Launcher_New.exe and Contra_FileList.txt into an empty folder and run again.\n" +
                             "Installed folders (with Contra_Installed.marker) switch to check/repair mode automatically.",
                             "Contra Launcher", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         Application.Exit();
@@ -147,7 +147,7 @@ namespace Contra
         /// </summary>
         private static string FindFirstForeignItem(string baseDir)
         {
-            string[] ownFiles = { ManifestFileName, MarkerFileName, "Contra_Launcher.exe", "Contra_Launcher.pdb" };
+            string[] ownFiles = { ManifestFileName, MarkerFileName, "Contra_Launcher_New.exe", "Contra_Launcher_New.pdb" };
 
             foreach (string file in Directory.GetFiles(baseDir))
             {
