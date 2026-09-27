@@ -40,6 +40,11 @@ namespace Contra
             RadioFlag_UA.Click += RadioFlag_AliasClick;
             RadioFlag_BG.Click += RadioFlag_AliasClick;
             RadioFlag_DE.Click += RadioFlag_AliasClick;
+            RadioFlag_GB.MouseDown += RadioFlag_AliasMouseDown;
+            RadioFlag_RU.MouseDown += RadioFlag_AliasMouseDown;
+            RadioFlag_UA.MouseDown += RadioFlag_AliasMouseDown;
+            RadioFlag_BG.MouseDown += RadioFlag_AliasMouseDown;
+            RadioFlag_DE.MouseDown += RadioFlag_AliasMouseDown;
 
             SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
             Application.ApplicationExit += new EventHandler(OnApplicationExit);
@@ -1639,6 +1644,14 @@ namespace Contra
         // to its own country's flag once Chinese is the active language.
         private RadioButton cnAliasFlag;
 
+        /// <summary>
+        ///     Set on MouseDown (which fires BEFORE the radio changes state): the user
+        ///     clicked a flag that was already the active language. The Click handler then
+        ///     switches to Chinese. Without this gate every language selection would
+        ///     instantly bounce back to Chinese, because Click fires after CheckedChanged.
+        /// </summary>
+        private bool aliasClickCandidate;
+
         private void FlagMouseEnter(RadioButton flag, System.Drawing.Image ownHover)
         {
             flag.BackgroundImage = flag == cnAliasFlag ? Properties.Resources.flag_cn_tr : ownHover;
@@ -1649,15 +1662,23 @@ namespace Contra
             flag.BackgroundImage = flag == cnAliasFlag ? Properties.Resources.flag_cn : ownNormal;
         }
 
+        private void RadioFlag_AliasMouseDown(object sender, MouseEventArgs e)
+        {
+            RadioButton flag = sender as RadioButton;
+            aliasClickCandidate = flag != null && flag.Checked && Globals.currentLanguage != "CN";
+        }
+
         /// <summary>
         ///     Clicking the flag that currently displays the Chinese flag (i.e. the active
         ///     language's own flag) switches the launcher to Chinese.
         /// </summary>
         private void RadioFlag_AliasClick(object sender, EventArgs e)
         {
-            RadioButton flag = sender as RadioButton;
-            if (flag != null && flag.Checked && Globals.currentLanguage != "CN")
+            if (aliasClickCandidate && sender is RadioButton && Globals.currentLanguage != "CN")
+            {
+                aliasClickCandidate = false;
                 RadioFlag_CN.Checked = true;
+            }
         }
 
         /// <summary>
