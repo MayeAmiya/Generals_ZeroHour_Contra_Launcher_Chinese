@@ -157,12 +157,12 @@ namespace Contra
             ["CameraPitch"] = lang => ChooseByLanguage(lang, "Camera Pitch: ", "Наклон камеры: ", "Нахил камери: ", "Наклон на камерата: ", "Kameraneigung: ", "视角角度:"),
 
             ["CameraPitchDescription"] = lang => ChooseByLanguage(lang,
-                "Camera pitch angle in degrees.\nVanilla writes d3d8.cfg, GO\nwrites settings.json.",
-                "Угол наклона камеры в градусах.\n vanilla пишет d3d8.cfg, GO —\nsettings.json.",
-                "Кут нахилу камери у градусах.\nvanilla пише d3d8.cfg, GO —\nsettings.json.",
-                "Ъгълът на наклон на камерата.\nvanilla пише d3d8.cfg, GO пише\nsettings.json.",
-                "Kameraneigung in Grad. Vanilla\nschreibt d3d8.cfg, GO schreibt\nsettings.json.",
-                "视角俯仰角度（度）。\n原版模式写入 d3d8.cfg，\nGO 模式写入 settings.json。"),
+                "Camera pitch angle in degrees.",
+                "Угол наклона камеры в градусах.",
+                "Кут нахилу камери у градусах.",
+                "Ъгълът на наклон на камерата в градуси.",
+                "Kameraneigung in Grad.",
+                "视角俯仰角度（度）。"),
             
             ["TextureRes"] = lang => ChooseByLanguage(lang, "Texture Resolution: ", "Разр. текстур: ", "Розр. текстур: ", "Текстурна резол.: ", "Texturauflösung: ", "贴图精度:"),
             

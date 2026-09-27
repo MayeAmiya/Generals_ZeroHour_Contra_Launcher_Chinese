@@ -72,7 +72,7 @@
       <Value Profile="(Default)">False</Value>
     </Setting>
     <Setting Name="GoCameraMaxHeight" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">500</Value>
+      <Value Profile="(Default)">700</Value>
     </Setting>
     <Setting Name="GoCameraPitch" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">45</Value>

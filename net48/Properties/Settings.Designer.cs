@@ -301,7 +301,7 @@ namespace Contra.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("500")]
+        [global::System.Configuration.DefaultSettingValueAttribute("700")]
         public int GoCameraMaxHeight {
             get {
                 return ((int)(this["GoCameraMaxHeight"]));

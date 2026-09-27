@@ -34,7 +34,8 @@ namespace Contra
             "UseCloudMap",
             "UseLightMap",
             "UseShadowDecals",
-            "UseShadowVolumes"
+            "UseShadowVolumes",
+            "AntiAliasing"
         };
 
         /// <summary>
@@ -56,7 +57,11 @@ namespace Contra
                 { "UseCloudMap", "Yes" },
                 { "UseLightMap", "Yes" },
                 { "UseShadowDecals", "Yes" },
-                { "UseShadowVolumes", "Yes" }
+                { "UseShadowVolumes", "Yes" },
+                // Combined quality tier read by the Generals Online client build
+                // (0 = off, 2/4/8 = MSAA samples with matching filter/aniso). Factory default 8X;
+                // only filled when the key is missing, so an explicit user choice always survives.
+                { "AntiAliasing", "8" }
             };
 
         private readonly List<string> _order = new List<string>();

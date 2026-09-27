@@ -64,6 +64,12 @@ namespace Contra
         private CheckBox GoModeCheckBox;
         private CheckBox GoUnlimitedCheckBox;
 
+        // Combined quality tier for the Generals Online client build (created in the constructor).
+        // One dropdown maps to MSAA + texture filter + anisotropy; persisted to Options.ini
+        // as the "AntiAliasing" key, which the GO client reads at startup.
+        private Label QualityTierLabel;
+        private ComboBox QualityTierComboBox;
+
         // Guards the radio handlers against the programmatic Checked assignments during construction.
         private bool cameraControlsInitializing = true;
 
@@ -102,6 +108,40 @@ namespace Contra
             GoUnlimitedCheckBox.Enabled = GoModeCheckBox.Checked;
             GoUnlimitedCheckBox.Checked = GoModeCheckBox.Checked && Properties.Settings.Default.GoUnlimitedCamera;
             cameraControlsInitializing = false;
+
+            // Combined quality tier dropdown (GO client): the game's own Options menu exposes the
+            // same setting as "Anti-Aliasing"; each tier bundles an MSAA level with a matching
+            // texture filter and anisotropy level. Placed below the Generals Online checkboxes.
+            QualityTierLabel = new Label();
+            QualityTierLabel.Text = "MSAA + Filter";
+            QualityTierLabel.AutoSize = true;
+            QualityTierLabel.Location = new Point(658, 204);
+            QualityTierLabel.BackColor = Color.Transparent;
+            QualityTierLabel.ForeColor = Color.White;
+            Controls.Add(QualityTierLabel);
+
+            QualityTierComboBox = new ComboBox();
+            QualityTierComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            QualityTierComboBox.Items.AddRange(new object[]
+            {
+                Globals.currentLanguage == "CN" ? "关闭" : "Off",
+                "2X",
+                "4X",
+                "8X"
+            });
+            QualityTierComboBox.Location = new Point(658, 224);
+            QualityTierComboBox.Size = new Size(90, 26);
+            QualityTierComboBox.BackColor = Color.FromArgb(30, 30, 46);
+            QualityTierComboBox.ForeColor = Color.White;
+            QualityTierComboBox.Font = new Font("Calibri", 11, GraphicsUnit.Pixel);
+            Controls.Add(QualityTierComboBox);
+            // Factory default is 8X; the Options.ini read-back below overrides it when the user
+            // has a saved AntiAliasing value.
+            QualityTierComboBox.SelectedIndex = 3;
+
+            // Shrink the resolution combo font by two sizes as well, so the two dropdowns read
+            // the same at a glance.
+            resolutionComboBox.Font = new Font("Calibri", 11, GraphicsUnit.Pixel);
 
             // The old particle cap slider doubles as the camera pitch (degrees). The height slider feeds
             // GameData in vanilla mode and settings.json in GO mode - conversion happens on apply.
@@ -356,6 +396,18 @@ namespace Contra
                         {
                             found.Add(line);
                         }
+                        // Combined quality tier used by the Generals Online client build
+                        // (0 = off, 2/4/8 = MSAA samples with matching filter/aniso).
+                        if (line.ToLower().Contains("antialiasing ="))
+                        {
+                            string aaVal = line.Substring(line.IndexOf('=') + 2).Trim();
+                            int aa;
+                            if (!int.TryParse(aaVal, out aa)) aa = 0;
+                            if (aa >= 8) QualityTierComboBox.SelectedIndex = 3;
+                            else if (aa >= 4) QualityTierComboBox.SelectedIndex = 2;
+                            else if (aa >= 2) QualityTierComboBox.SelectedIndex = 1;
+                            else QualityTierComboBox.SelectedIndex = 0;
+                        }
                         // Get current texture resolution
                         if (line.ToLower().Contains("texturereduction ="))
                         {
@@ -398,11 +450,154 @@ namespace Contra
             LegacyHotkeysRadioButton.Checked = Properties.Settings.Default.LegacyHotkeys;
             AnisoCheckBox.Checked = Properties.Settings.Default.Anisotropic;
 
-            // Get current camera height
-            if (File.Exists("!" + MainForm.betaPrefix + "_GameData.big"))
+            // Get current camera state from the config of the selected mode, so the sliders
+            // always show what the game will actually use (files beat stale stored values -
+            // the GO client and GenTool can both change values while playing).
+            if (GoModeCheckBox.Checked)
             {
-                try {ReadCameraHeight(File.ReadAllText("!" + MainForm.betaPrefix + "_GameData.big"));}
-                catch (IOException) {Messages.GenerateMessageBox("E_CloseGameDataP3", Globals.currentLanguage);}
+                if (ReadGoCameraSettings(out int goPitch, out int goHeight))
+                {
+                    if (goPitch > 0) SetPitchSlider(goPitch);
+                    if (goHeight > 0) SetHeightSlider(goHeight);
+                }
+            }
+            else
+            {
+                if (File.Exists("!" + MainForm.betaPrefix + "_GameData.big"))
+                {
+                    try { ReadCameraHeight(File.ReadAllText("!" + MainForm.betaPrefix + "_GameData.big")); }
+                    catch (IOException) { Messages.GenerateMessageBox("E_CloseGameDataP3", Globals.currentLanguage); }
+                }
+
+                if (ReadD3D8CameraSettings(out int d3dPitch, out _))
+                {
+                    if (d3dPitch > 0) SetPitchSlider(d3dPitch);
+                }
+            }
+
+            // The shared stored value now matches the config the user just saw.
+            Properties.Settings.Default.GoCameraPitch = ParticleCapTrackBar.Value;
+            Properties.Settings.Default.GoCameraMaxHeight = CameraHeightTrackBar.Value;
+            Properties.Settings.Default.Save();
+        }
+
+        /// <summary>
+        ///     Sets the pitch slider (GenTool-style degrees) and refreshes its label.
+        /// </summary>
+        private void SetPitchSlider(int pitch)
+        {
+            ParticleCapTrackBar.Value = Math.Max(ParticleCapTrackBar.Minimum,
+                Math.Min(ParticleCapTrackBar.Maximum, pitch));
+            ParticleCapLabel.Text = Messages.GenerateMessage("CameraPitch", Globals.currentLanguage)
+                + ParticleCapTrackBar.Value.ToString();
+        }
+
+        /// <summary>
+        ///     Sets the height slider (world units) and refreshes its label.
+        /// </summary>
+        private void SetHeightSlider(int maxHeight)
+        {
+            CameraHeightTrackBar.Value = Math.Max(CameraHeightTrackBar.Minimum,
+                Math.Min(CameraHeightTrackBar.Maximum, maxHeight));
+            CameraHeightLabel.Text = Messages.GenerateMessage("CameraHeightString", Globals.currentLanguage)
+                + CameraHeightTrackBar.Value.ToString() + ".0";
+        }
+
+        /// <summary>
+        ///     Re-reads the camera values of the selected mode into the stored settings, without
+        ///     touching any UI. Called when the game process exits: the GO client may have saved a
+        ///     new pitch (PageUp/PageDown) and GenTool may have written its own values to d3d8.cfg.
+        /// </summary>
+        internal static void SyncStoredCameraFromFiles()
+        {
+            try
+            {
+                if (Properties.Settings.Default.GoClientMode)
+                {
+                    if (ReadGoCameraSettings(out int pitch, out int maxHeight))
+                    {
+                        if (pitch > 0) Properties.Settings.Default.GoCameraPitch = pitch;
+                        if (maxHeight > 0) Properties.Settings.Default.GoCameraMaxHeight = maxHeight;
+                        Properties.Settings.Default.Save();
+                    }
+                }
+                else if (ReadD3D8CameraSettings(out int d3dPitch, out _))
+                {
+                    if (d3dPitch > 0) Properties.Settings.Default.GoCameraPitch = d3dPitch;
+                    Properties.Settings.Default.Save();
+                }
+            }
+            catch
+            {
+                // Config files belong to the game; a read failure must never block the exit path.
+            }
+        }
+
+        /// <summary>
+        ///     Reads camera.pitch and camera.max_height from the GO client's settings.json.
+        ///     The camera object is extracted first so the exact-key regexes cannot collide
+        ///     with "max_height_only_when_lobby_host"; values are -1 when a key is absent.
+        /// </summary>
+        internal static bool ReadGoCameraSettings(out int pitch, out int maxHeight)
+        {
+            pitch = -1;
+            maxHeight = -1;
+            try
+            {
+                string path = GoSettingsJsonPath();
+                if (!File.Exists(path)) return false;
+                string json = File.ReadAllText(path);
+
+                Match camera = Regex.Match(json, "\"camera\"\\s*:\\s*\\{([^}]*)\\}");
+                if (!camera.Success) return false;
+
+                Match pitchMatch = Regex.Match(camera.Groups[1].Value, "\"pitch\"\\s*:\\s*([0-9.]+)");
+                Match heightMatch = Regex.Match(camera.Groups[1].Value, "\"max_height\"\\s*:\\s*([0-9.]+)");
+                if (pitchMatch.Success)
+                    pitch = (int)Math.Round(float.Parse(pitchMatch.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture));
+                if (heightMatch.Success)
+                    maxHeight = (int)Math.Round(float.Parse(heightMatch.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture));
+                return pitchMatch.Success || heightMatch.Success;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        ///     Reads the GenTool camera values from d3d8.cfg, preferring the "[gentool76]" section
+        ///     (newer GenTool) over the legacy flat keys. GenTool stores the zoom height as a
+        ///     percentage of the engine default (300 world units), so camera=height*100/300.
+        /// </summary>
+        internal static bool ReadD3D8CameraSettings(out int pitch, out int cameraHeight)
+        {
+            pitch = -1;
+            cameraHeight = -1;
+            try
+            {
+                string path = Path.Combine(Environment.CurrentDirectory, "d3d8.cfg");
+                if (!File.Exists(path)) return false;
+                string content = File.ReadAllText(path);
+
+                // Section body first (covers the flat keys repeated inside it too), whole file as fallback.
+                string scope = content;
+                int sectionStart = content.IndexOf("[gentool76]", StringComparison.OrdinalIgnoreCase);
+                if (sectionStart >= 0) scope = content.Substring(sectionStart);
+                if (!Regex.IsMatch(scope, "(^|[\\r\\n])\\s*pitch[ \t]*=", RegexOptions.IgnoreCase))
+                    scope = content;
+
+                Match pitchMatch = Regex.Match(scope, "(^|[\\r\\n])\\s*pitch[ \t]*=[ \t]*([0-9]+)", RegexOptions.IgnoreCase);
+                Match cameraMatch = Regex.Match(scope, "(^|[\\r\\n])\\s*camera[ \t]*=[ \t]*([0-9]+)", RegexOptions.IgnoreCase);
+                if (pitchMatch.Success)
+                    pitch = int.Parse(pitchMatch.Groups[2].Value);
+                if (cameraMatch.Success)
+                    cameraHeight = (int)Math.Round(int.Parse(cameraMatch.Groups[2].Value) * GenToolCameraBase / 100.0);
+                return pitchMatch.Success || cameraMatch.Success;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -686,6 +881,26 @@ namespace Contra
                         "\r?\nTextureReduction =.*",
                         "\r\nTextureReduction = 0\r",
                         RegexOptions.IgnoreCase));
+                }
+
+                // Apply combined quality tier (GO client): MSAA + texture filter + anisotropy.
+                // Vanilla builds ignore the unknown key, so it is safe to write in both modes.
+                {
+                    int tier = QualityTierComboBox.SelectedIndex == 1 ? 2
+                             : QualityTierComboBox.SelectedIndex == 2 ? 4
+                             : QualityTierComboBox.SelectedIndex == 3 ? 8
+                             : 0;
+                    string iniContent = File.ReadAllText(Globals.myDocPath + "Options.ini");
+                    Regex aaRegex = new Regex("\r?\nAntiAliasing =.*", RegexOptions.IgnoreCase);
+                    if (aaRegex.IsMatch(iniContent))
+                    {
+                        iniContent = aaRegex.Replace(iniContent, "\r\nAntiAliasing = " + tier + "\r", 1);
+                    }
+                    else
+                    {
+                        iniContent = iniContent.TrimEnd('\r', '\n') + "\r\nAntiAliasing = " + tier + "\r\n";
+                    }
+                    File.WriteAllText(Globals.myDocPath + "Options.ini", iniContent);
                 }
             }
             else Messages.GenerateMessageBox("E_NotFound_OptionsIni", Globals.currentLanguage);
@@ -1027,17 +1242,13 @@ namespace Contra
         ///     Merges the GO camera zoom-out height and pitch into the client's settings.json. Zeroes restore
         ///     the client defaults; the rest of the file is left untouched so the client keeps its own fields.
         /// </summary>
-        private static void WriteGoCameraSettings(int maxHeight, int pitch)
+        internal static void WriteGoCameraSettings(int maxHeight, int pitch)
         {
             try
             {
-                string dir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                    "Command and Conquer Generals Zero Hour Data",
-                    "GeneralsOnlineData");
-                Directory.CreateDirectory(dir);
+                string path = GoSettingsJsonPath();
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
 
-                string path = Path.Combine(dir, "settings.json");
                 string json = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
 
                 if (string.IsNullOrWhiteSpace(json))
@@ -1064,6 +1275,91 @@ namespace Contra
         }
 
         /// <summary>
+        ///     Location of the GO client's settings.json (the client reads it directly; launcher.json
+        ///     is only consumed by the official launcher).
+        /// </summary>
+        private static string GoSettingsJsonPath()
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "Command and Conquer Generals Zero Hour Data",
+                "GeneralsOnlineData", "settings.json");
+        }
+
+        /// <summary>
+        ///     Creates the GO client's settings.json (and its GeneralsOnlineData folder) when
+        ///     missing, writing the same values a mode switch would write for the current mode.
+        ///     The client merges its own defaults for every absent key, so a minimal file is
+        ///     always valid for it.
+        /// </summary>
+        internal static void EnsureGoSettingsJson()
+        {
+            try
+            {
+                if (File.Exists(GoSettingsJsonPath())) return;
+
+                if (Properties.Settings.Default.GoClientMode && Properties.Settings.Default.GoUnlimitedCamera)
+                {
+                    WriteGoCameraSettings(Properties.Settings.Default.GoCameraMaxHeight,
+                        Properties.Settings.Default.GoCameraPitch);
+                }
+                else
+                {
+                    WriteGoCameraSettings(0, 0);
+                }
+            }
+            catch
+            {
+                // The GO client merges its own defaults for absent keys; never block startup over it.
+            }
+        }
+
+        /// <summary>
+        ///     Reads plugins.anticheat from settings.json (empty string when missing or unreadable).
+        ///     "easyanticheat" means the official launcher would start through its EAC wrapper.
+        /// </summary>
+        internal static string ReadGoAnticheat()
+        {
+            try
+            {
+                string path = GoSettingsJsonPath();
+                if (!File.Exists(path)) return "";
+                Match match = Regex.Match(File.ReadAllText(path), "\"anticheat\"\\s*:\\s*\"([^\"]*)\"");
+                return match.Success ? match.Groups[1].Value : "";
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
+        /// <summary>
+        ///     Rewrites plugins.anticheat in settings.json. Unlimited launches need it: EAC rejects
+        ///     modified executables, and an empty key makes the client load no anticheat plugin.
+        /// </summary>
+        internal static void SetGoAnticheat(string value)
+        {
+            try
+            {
+                string path = GoSettingsJsonPath();
+                if (!File.Exists(path)) return; // client never configured; nothing to override
+                string json = File.ReadAllText(path);
+
+                if (Regex.IsMatch(json, "\"anticheat\"\\s*:"))
+                    json = Regex.Replace(json, "(\"anticheat\"\\s*:\\s*\")([^\"]*)(\")", "$1" + value + "$3");
+                else if (Regex.IsMatch(json, "\"plugins\"\\s*:\\s*\\{"))
+                    json = Regex.Replace(json, "(\"plugins\"\\s*:\\s*\\{)", "$1\"anticheat\":\"" + value + "\",");
+                else return; // no plugins object: the client has never written anticheat config
+
+                File.WriteAllText(path, json);
+            }
+            catch
+            {
+                // settings.json belongs to the GO client; never block a launch over it.
+            }
+        }
+
+        /// <summary>
         ///     Sets one numeric value inside the "camera" object, inserting the key when missing. The exact
         ///     key match cannot collide with "max_height_only_when_lobby_host".
         /// </summary>
@@ -1084,20 +1380,45 @@ namespace Contra
         private const float GenToolCameraBase = 300.0f;
 
         /// <summary>
-        ///     Writes the vanilla-mode camera pitch and zoom-out height into the GenTool d3d8.cfg.
+        ///     GenTool's window position preset for windowed mode; 2 = TOP (confirmed in game).
+        ///     Pinned on every d3d8.cfg write so the position never drifts to another preset.
         /// </summary>
-        private static void WriteD3D8Config(int pitch, int cameraHeight)
+        private const int GenToolWindowPresetTop = 2;
+
+        /// <summary>
+        ///     Writes the vanilla-mode camera pitch and zoom-out height into the GenTool d3d8.cfg.
+        ///     Called on every Options apply and again right before the game process starts,
+        ///     because GenTool reads the file only while the game is booting. Also pins the
+        ///     window position preset to TOP.
+        /// </summary>
+        internal static void WriteD3D8Config(int pitch, int cameraHeight)
         {
             try
             {
                 int genToolCamera = (int)Math.Round(cameraHeight * 100.0 / GenToolCameraBase);
                 string path = Path.Combine(Environment.CurrentDirectory, "d3d8.cfg");
-                string content = File.Exists(path) ? File.ReadAllText(path) : "[gentool76]\r\n";
+                string content = File.Exists(path) ? File.ReadAllText(path) : "";
 
-                content = SetD3D8Value(content, "pitch", pitch.ToString());
-                content = SetD3D8Value(content, "camera", genToolCamera.ToString());
+                // GenTool (7.6+) keeps its settings inside a "[gentool76]" section while still
+                // reading the legacy flat keys in front of it; its own writer maintains exactly
+                // that shape (flat prefix + appended section). Manage window/pitch/camera in sync
+                // in both scopes and touch NOTHING else (the "$NNN" marker, upload, fps, text,
+                // image) - foreign or duplicated lines make GenTool reset the user's settings.
+                int sectionStart = content.IndexOf("[gentool76]", StringComparison.OrdinalIgnoreCase);
+                string head = sectionStart < 0 ? content : content.Substring(0, sectionStart);
+                string tail = sectionStart < 0 ? "[gentool76]\r\n" : content.Substring(sectionStart);
 
-                File.WriteAllText(path, content);
+                if (head.Length > 0)
+                {
+                    head = SetD3D8Value(head, "window", GenToolWindowPresetTop.ToString());
+                    head = SetD3D8Value(head, "pitch", pitch.ToString());
+                    head = SetD3D8Value(head, "camera", genToolCamera.ToString());
+                }
+                tail = SetD3D8Value(tail, "window", GenToolWindowPresetTop.ToString());
+                tail = SetD3D8Value(tail, "pitch", pitch.ToString());
+                tail = SetD3D8Value(tail, "camera", genToolCamera.ToString());
+
+                File.WriteAllText(path, head + tail);
             }
             catch
             {
@@ -1107,15 +1428,22 @@ namespace Contra
 
         private static string SetD3D8Value(string content, string key, string value)
         {
-            Regex replace = new Regex("(\\[gentool76\\][\\s\\S]*?^\\s*" + key + "\\s*=).*$",
+            // Flat key=value list: match the key wherever it sits, collapse duplicates,
+            // and keep exactly one clean "key=value" line so GenTool reads the right value.
+            Regex line = new Regex("^[ \t]*" + Regex.Escape(key) + "[ \t]*=[^\r\n]*(\r?\n|$)",
                 RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
-            if (replace.IsMatch(content))
-            {
-                return replace.Replace(content, "$1" + value, 1);
-            }
+            string newLine = key + "=" + value + "\r\n";
 
-            return content.TrimEnd() + "\r\n" + key + "=" + value + "\r\n";
+            if (!line.IsMatch(content)) return content.TrimEnd() + "\r\n" + newLine;
+
+            bool firstKept = false;
+            return line.Replace(content, match =>
+            {
+                if (firstKept) return string.Empty; // drop stale duplicates from older appends
+                firstKept = true;
+                return newLine;
+            });
         }
 
         private void TextureResTrackBar_Scroll(object sender, EventArgs e)
