@@ -215,6 +215,7 @@ namespace Contra
 
                 case "ENGINE":
                 case "MOD":
+                case "GENTOOL":
                     return await DownloadFromS3(entry, target);
 
                 default:
@@ -320,9 +321,16 @@ namespace Contra
                 return false;
             }
 
-            // Each category lives in its own folder on R2 (see dl.mayeamiya.dev):
-            // engine files under GeneralsOnlineUnlimited/, mod files under ContraXBeta2Patch1/.
-            string remoteFolder = entry.Category == "ENGINE" ? "GeneralsOnlineUnlimited/" : "ContraXBeta2Patch1/";
+            // Each category lives in its own folder on R2 (see dl.mayeamiya.dev/index.html):
+            // engine files under GeneralsOnlineUnlimited/, mod files under
+            // ContraXBeta2Patch1/, GenTool under GenTool_v8.9/.
+            string remoteFolder;
+            switch (entry.Category)
+            {
+                case "ENGINE": remoteFolder = "GeneralsOnlineUnlimited/"; break;
+                case "GENTOOL": remoteFolder = "GenTool_v8.9/"; break;
+                default: remoteFolder = "ContraXBeta2Patch1/"; break;
+            }
 
             // Backslashes become path segments; segments are escaped so spaces survive the URL.
             string urlPath = remoteFolder + entry.RelativePath.Replace('\\', '/');

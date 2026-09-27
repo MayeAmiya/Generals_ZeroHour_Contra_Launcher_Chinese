@@ -2552,6 +2552,11 @@ namespace Contra
                 }
             }
 
+            // GenTool is now distributed through our own manifest (Contra_FileList.txt
+            // GENTOOL section -> R2 GenTool_v8.9/), hash-checked like the engine and mod
+            // files. The legacy gentool.net updater below stays disabled so the two
+            // channels can never fight over d3d8.dll.
+            /*
             string gtHash = null;
             try
             {
@@ -2590,6 +2595,7 @@ namespace Contra
                 string gtURL = "http://www.gentool.net/download/" + genToolFileName;
                 DownloadGentool(gtURL);
             }
+            */
 
             // Cleanup old Launcher file after update. The delete is tolerated: when the user
             // launched the leftover Contra_Launcher_ToDelete.exe itself, the file is locked

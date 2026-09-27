@@ -272,4 +272,13 @@ ENGINE|zlib1.dll|b827a65b9366ea8f7d951db373fb6a18d04aed6954c0f62a03db9629bec2a11
 ENGINE|GeneralsOnlineZH.exe
 ENGINE|GeneralsOnlineZH_60.exe
 
-# 汇总 / totals: ZH_GENERALS=44 ZH=133 MOD=35 ENGINE=13 (GO 客户端两个 exe 不校验版本 / GO client exes are existence-only)
+
+# ============================================================
+# GENTOOL —— GenTool v8.9（d3d8.dll 注入 + links 快捷方式），从 R2 获取并校验哈希
+# GenTool v8.9 files, hash-checked and fetched from R2
+# ============================================================
+GENTOOL|d3d8.dll|be5276180d04b3de9abd20aeaf2c1f65a2b65c800233ce49d5e77f1ab42441f7
+GENTOOL|ReadMe.txt|590ef3e4d4dc04031981414ac29aa0b64be781d5c2cbce266021616d822b8a80
+GENTOOL|links/CNC-Online.url|16eafe8f08e38d40f331bb04bead4f2cd31b8949fd04e46ac0f5d813917a8353
+GENTOOL|links/Gentool Website.url|516c335a8c89351c39d6de24c525964c43be4742b345a9067270130bcff36542
+# 汇总 / totals: ZH_GENERALS=44 ZH=133 MOD=35 ENGINE=13 GENTOOL=4 (GO 客户端两个 exe 不校验版本 / GO client exes are existence-only)
