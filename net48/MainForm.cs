@@ -2747,22 +2747,12 @@ namespace Contra
             // marker exists; established installs always follow the user's saved choice.
             bool firstLaunch = !FileRepair.MarkerExists();
 
-            // Language comes FIRST (user spec): on the very first launch the system
-            // language is auto-detected and applied immediately - before the self-update
-            // and everything else - so the whole bootstrap runs in the user's language.
-            // Established installs keep the saved choice.
-            if (firstLaunch)
-            {
-                // Chinese first, by prefix: ICU reports "zh-Hans-CN", which never equals
-                // the legacy exact names and used to silently fall through to English.
-                if (IsChineseSystemLanguage()) RadioFlag_CN.Checked = true;
-                else if (GetCurrentCulture() == "en-US") RadioFlag_GB.Checked = true;
-                else if (GetCurrentCulture() == "ru-RU") RadioFlag_RU.Checked = true;
-                else if (GetCurrentCulture() == "uk-UA") RadioFlag_UA.Checked = true;
-                else if (GetCurrentCulture() == "bg-BG") RadioFlag_BG.Checked = true;
-                else if (GetCurrentCulture() == "de-DE") RadioFlag_DE.Checked = true;
-                else RadioFlag_GB.Checked = true;
-            }
+            // Language comes FIRST (user spec): on the very first launch a CHINESE system
+            // is switched to Chinese immediately - before the self-update and everything
+            // else - so the whole bootstrap runs in Chinese. An English (non-Chinese)
+            // system already sits on the English default, so nothing is switched.
+            if (firstLaunch && IsChineseSystemLanguage())
+                RadioFlag_CN.Checked = true;
 
             // Temporary hack so update runs on main thread, versionsTXT should be rewritten to be async if possible
             // TheSuperHackers @feature Auto-update is back, served from our own S3 channel

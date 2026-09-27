@@ -94,12 +94,15 @@ namespace Contra
             if (notClean == null)
                 return true; // clean folder: the bootstrap will run in RunAsync
 
+            // This popup fires BEFORE the launcher language is decided (the gate runs
+            // first), so it follows the SYSTEM language, not the launcher language.
+            bool chineseSystem = IsChineseSystemLanguage();
             MessageBox.Show(new Form { TopMost = true },
-                L("首次安装要求启动器位于干净（空）的文件夹中。\n当前文件夹包含： ",
-                  "First install requires the launcher to sit in a clean (empty) folder.\nThis folder contains: ")
-                + notClean + "\n\n" +
-                L("请将 Contra_Launcher_New.exe 移入空文件夹后重新运行。\n已安装的目录（含 Contra_Installed.marker）会自动进入检查修复模式。",
-                  "Move Contra_Launcher_New.exe into an empty folder and run again.\nInstalled folders (with Contra_Installed.marker) switch to check/repair mode automatically."),
+                chineseSystem
+                    ? "首次安装要求启动器位于干净（空）的文件夹中。\n当前文件夹包含： " + notClean + "\n\n" +
+                      "请将 Contra_Launcher_New.exe 移入空文件夹后重新运行。\n已安装的目录（含 Contra_Installed.marker）会自动进入检查修复模式。"
+                    : "First install requires the launcher to sit in a clean (empty) folder.\nThis folder contains: " + notClean + "\n\n" +
+                      "Move Contra_Launcher_New.exe into an empty folder and run again.\nInstalled folders (with Contra_Installed.marker) switch to check/repair mode automatically.",
                 "Contra Launcher", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             Application.Exit();
             return false;
