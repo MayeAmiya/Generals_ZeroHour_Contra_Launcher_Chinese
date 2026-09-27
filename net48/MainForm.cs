@@ -414,6 +414,19 @@ namespace Contra
             string zip_url = launcher_url + launcher_ver.Substring(0, launcher_ver.IndexOf("$")) + @"/Contra_Launcher.zip";
             string zip_path = zip_url.Split('/').Last();
 
+            // Our own channel may carry the update zip's SHA-256 ("Launcher-SHA256: <hex>$").
+            // When present, the downloaded package is verified before anything is applied;
+            // the official format simply lacks the line and skips verification.
+            string expectedZipHash = null;
+            if (versionsTXT.Contains("Launcher-SHA256: "))
+            {
+                string hashSegment = versionsTXT.Substring(versionsTXT.LastIndexOf("Launcher-SHA256: ") + 17);
+                if (hashSegment.Contains("$"))
+                    expectedZipHash = hashSegment.Substring(0, hashSegment.IndexOf("$")).Trim();
+                if (expectedZipHash != null && (expectedZipHash.Length != 64 || expectedZipHash.Replace("-", "").Length != 64))
+                    expectedZipHash = null;
+            }
+
             // If there is a new launcher version, call the DownloadUpdate method
             if (newVersion != Application.ProductVersion)
             {
@@ -430,6 +443,27 @@ namespace Contra
                     ShowTopMostInfo(pendingText.Item1, pendingText.Item2);
 
                     await DownloadFile(zip_url, zip_path, TimeSpan.FromMinutes(5), httpCancellationToken.Token);
+
+                    // Verify the package against the hash published in Versions_X.txt before
+                    // touching anything: a corrupted or tampered download is deleted and the
+                    // update aborted.
+                    if (expectedZipHash != null)
+                    {
+                        string actualHash = CalculateSha256(zip_path);
+                        if (!string.Equals(actualHash, expectedZipHash, StringComparison.OrdinalIgnoreCase))
+                        {
+                            try { File.Delete(zip_path); } catch { }
+                            applyNewLauncher = false;
+                            PatchDLPanel.Hide();
+
+                            MessageBox.Show(new Form { TopMost = true },
+                                Globals.currentLanguage == "CN"
+                                    ? "更新包校验失败（SHA-256 不符），已取消本次更新。\n请稍后重试，或手动从 Release 页面下载。"
+                                    : "Update package verification failed (SHA-256 mismatch). The update was cancelled.\nPlease try again later, or download it manually from the releases page.",
+                                "Contra Launcher", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+                    }
 
                     using (ZipArchive archive = await Task.Run(() => ZipFile.OpenRead(zip_path)))
                     {
@@ -2636,8 +2670,17 @@ namespace Contra
             catch { }
         }
 
-        public static string CalculateMD5(string filename)
+        /// <summary>Lowercase SHA-256 of a file; used to verify self-update packages.</summary>
+        public static string CalculateSha256(string filename)
         {
+            using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create())
+            using (FileStream stream = File.OpenRead(filename))
+            {
+                return BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+            }
+        }
+
+        public static string CalculateMD5(string filename)        {
             using (var md5 = MD5.Create())
             {
                 using (var stream = File.OpenRead(filename))

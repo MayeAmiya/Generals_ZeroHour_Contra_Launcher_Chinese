@@ -70,14 +70,14 @@ Build Location: `net48\bin\Release\Contra_Launcher_New.exe`
 ## R2 桶文件布局 / Bucket layout (contrax-release)
 
 ```
-Versions_X.txt                          # "Launcher: 2.0.0.8.C1$..."（MOTD 可跟在后面）
+Versions_X.txt                          # "Launcher: 2.0.0.8.C1$" + "Launcher-SHA256: <zip 哈希>$" + MOTD 行
 <version>/Contra_Launcher.zip           # 自更新包：内含 Contra_Launcher_New_<version>.exe
 GeneralsOnlineUnlimited/…               # 无限制引擎 + 官方 GO 客户端 exe
 ContraXBeta2Patch1/…                    # Contra X Beta 2 模组文件
 GenTool_v8.9/…                          # GenTool（d3d8.dll / ReadMe / links）
 ```
 
-- 自更新：启动器比对 `Versions_X.txt` 中的版本与自身 `Application.ProductVersion`，不一致即下载对应版本目录的 `Contra_Launcher.zip`（包内 exe 必须命名为 `Contra_Launcher_New_<version>.exe`，解压后启动器自动换名重启）。
+- 自更新：启动器比对 `Versions_X.txt` 中的版本与自身 `Application.ProductVersion`，不一致即下载对应版本目录的 `Contra_Launcher.zip`（包内 exe 必须命名为 `Contra_Launcher_New_<version>.exe`，解压后启动器自动换名重启）。**哈希校验**：`Versions_X.txt` 里写一行 `Launcher-SHA256: <Contra_Launcher.zip 的 SHA-256>$`，启动器下载后先验哈希，不符即删除并中止更新；不写该行则跳过校验（兼容官方格式）。
 - 首次安装：启动器在无 `Contra_Installed.marker` 的目录中要求目录干净（空，允许 `runtime_lib\`），完整安装成功后才写入标记；之后的启动进入检查修复模式。
 - `runtime_lib\`：可选。放入 `VC_redist.x86.exe` / `dxwebsetup.exe` 可离线安装运行库；否则启动器从微软官方链接下载。
 - 同盘硬链接：ZH / Generals 文件修复优先创建硬链接（与源安装同卷时），不占额外空间。
